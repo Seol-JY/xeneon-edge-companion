@@ -1,0 +1,9 @@
+_research/
+.build/
+dist/
+*.p12
+*.pem
+.DS_Store
+.swiftpm/
+.claude/
+.signing-identity
