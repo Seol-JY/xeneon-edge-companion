@@ -144,7 +144,7 @@ struct WidgetHost: View {
 
   var body: some View {
     switch slot.kind {
-    case .clock: ClockWidget(size: slot.size)
+    case .clock: ClockWidget(id: slot.id, size: slot.size)
     case .launcher: LauncherWidget(items: SettingsStore.shared.settings.launcherItems)
     case .aiUsage: UsageWidget()
     case .timer: TimerWidget()

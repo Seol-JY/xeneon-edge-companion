@@ -41,16 +41,17 @@ cat > "$APP/Contents/Info.plist" <<EOF
   <key>LSUIElement</key><true/>
   <key>ATSApplicationFontsPath</key><string>Fonts</string>
   <key>NSHighResolutionCapable</key><true/>
+  <key>NSAppleEventsUsageDescription</key><string>Shows what Apple Music is playing on the Edge, with its artwork and playback controls.</string>
   <key>NSHumanReadableCopyright</key><string>Unofficial companion app for the Corsair XENEON EDGE. MIT License.</string>
 </dict>
 </plist>
 EOF
 
 if security find-certificate -c "$SIGN_ID" >/dev/null 2>&1; then
-  codesign --force --options runtime --timestamp=none --sign "$SIGN_ID" "$APP"
+  codesign --force --options runtime --timestamp=none --entitlements Resources/EdgeCompanion.entitlements --sign "$SIGN_ID" "$APP"
   echo "Signed with '$SIGN_ID'."
 else
-  codesign --force --sign - "$APP"
+  codesign --force --entitlements Resources/EdgeCompanion.entitlements --sign - "$APP"
   echo "Ad-hoc signed (run scripts/make-cert.sh once so permissions survive rebuilds)."
 fi
 codesign --verify --strict "$APP" && echo "Built $APP"

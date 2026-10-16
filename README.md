@@ -26,6 +26,8 @@ dashboard. It is an unofficial project and not affiliated with Corsair.
 - Dashboard widgets: clock, CPU per core, GPU, memory, network and disk, temperatures, power and
   Bluetooth device batteries, Claude Code and Codex usage limits, volume and output device,
   timer, app launcher, system info, and an optional terminal on one side.
+- Apple Music on the clock widget's second page: artwork, track, progress (tap to seek) and
+  playback buttons. It comes to the front while music plays and steps back once playback stops.
 - Widgets in 1×1, 2×1, 1×2 and 2×2 sizes, several dashboard pages, widgets with their own pages,
   and a layout editor in Settings.
 - Panel white balance over DDC/CI. The values are stored in the panel, so they stay after the
@@ -72,6 +74,7 @@ Permissions requested on first launch:
 |---|---|
 | Input Monitoring | Reading the touch controller |
 | Accessibility | Touching other apps' windows, the pointer guard, moving windows |
+| Automation (Music) | Artwork, position and playback buttons for Apple Music. Asked the first time music plays; without it the track still shows |
 
 ## Usage
 

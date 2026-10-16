@@ -38,17 +38,32 @@ enum Theme {
 }
 
 /// Card chrome shared by every widget. No title: each widget's content says what it is.
-struct WidgetCard<Content: View>: View {
-  @ViewBuilder var content: () -> Content
+struct WidgetCard<Content: View, Backdrop: View>: View {
+  private let content: Content
+  private let backdrop: Backdrop
+
+  init(@ViewBuilder content: () -> Content) where Backdrop == EmptyView {
+    self.content = content()
+    self.backdrop = EmptyView()
+  }
+
+  /// `backdrop` fills the card behind the content, clipped to its rounded shape.
+  init(@ViewBuilder backdrop: () -> Backdrop, @ViewBuilder content: () -> Content) {
+    self.content = content()
+    self.backdrop = backdrop()
+  }
 
   var body: some View {
-    content()
+    content
       .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topLeading)
       .padding(18)
       .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topLeading)
       .background(
-        RoundedRectangle(cornerRadius: Theme.cornerRadius, style: .continuous)
-          .fill(Theme.card)
+        ZStack {
+          Theme.card
+          backdrop
+        }
+        .clipShape(RoundedRectangle(cornerRadius: Theme.cornerRadius, style: .continuous))
       )
       .overlay(
         RoundedRectangle(cornerRadius: Theme.cornerRadius, style: .continuous)

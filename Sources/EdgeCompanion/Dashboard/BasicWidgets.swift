@@ -2,9 +2,31 @@ import AppKit
 import EdgeCore
 import SwiftUI
 
+/// The clock, with the Apple Music player as a second page. While music plays the player comes to
+/// the front; it steps back when playback stops or stays paused for a while.
 struct ClockWidget: View {
+  let id: UUID
   var size: WidgetSize = .small
+  @ObservedObject private var music = MusicController.shared
 
+  var body: some View {
+    PagedCard(id: id, count: music.isActive ? 2 : 1) { page in
+      if page == 1 { NowPlayingBackdrop() }
+    } content: { page in
+      if page == 1 { NowPlayingView() } else { ClockFace() }
+    }
+    .onAppear {
+      music.start()
+      if music.featured { TilePager.shared.show(id, page: 1) }
+    }
+    .onChange(of: music.featured) { _, featured in TilePager.shared.show(id, page: featured ? 1 : 0) }
+    .onChange(of: music.track?.key) { _, _ in
+      if music.state == .playing { TilePager.shared.show(id, page: 1) }
+    }
+  }
+}
+
+struct ClockFace: View {
   private static let time: DateFormatter = {
     let f = DateFormatter()
     f.dateFormat = "HH:mm"
@@ -24,29 +46,27 @@ struct ClockWidget: View {
   }()
 
   var body: some View {
-    WidgetCard {
-      GeometryReader { geo in
-        // Largest time that fits: "HH:mm" plus the small seconds is about 3.9 em wide in SF Rounded bold.
-        let timeSize = min(geo.size.width / 3.9, geo.size.height * 0.42, 190)
-        TimelineView(.periodic(from: .now, by: 1)) { context in
-          VStack(alignment: .leading, spacing: 4) {
-            Spacer(minLength: 0)
-            HStack(alignment: .firstTextBaseline, spacing: 6) {
-              Text(Self.time.string(from: context.date))
-                .font(Theme.number(timeSize, weight: .bold))
-                .foregroundStyle(Theme.textPrimary)
-              Text(Self.seconds.string(from: context.date))
-                .font(Theme.number(timeSize * 0.34, weight: .medium))
-                .foregroundStyle(Theme.textTertiary)
-            }
-            Text(Self.date.string(from: context.date))
-              .font(Theme.text(max(18, timeSize * 0.24), weight: .medium))
-              .foregroundStyle(Theme.textSecondary)
-            Spacer(minLength: 0)
+    GeometryReader { geo in
+      // Largest time that fits: "HH:mm" plus the small seconds is about 3.9 em wide in SF Rounded bold.
+      let timeSize = min(geo.size.width / 3.9, geo.size.height * 0.42, 190)
+      TimelineView(.periodic(from: .now, by: 1)) { context in
+        VStack(alignment: .leading, spacing: 4) {
+          Spacer(minLength: 0)
+          HStack(alignment: .firstTextBaseline, spacing: 6) {
+            Text(Self.time.string(from: context.date))
+              .font(Theme.number(timeSize, weight: .bold))
+              .foregroundStyle(Theme.textPrimary)
+            Text(Self.seconds.string(from: context.date))
+              .font(Theme.number(timeSize * 0.34, weight: .medium))
+              .foregroundStyle(Theme.textTertiary)
           }
-          .lineLimit(1)
-          .frame(width: geo.size.width, height: geo.size.height, alignment: .leading)
+          Text(Self.date.string(from: context.date))
+            .font(Theme.text(max(18, timeSize * 0.24), weight: .medium))
+            .foregroundStyle(Theme.textSecondary)
+          Spacer(minLength: 0)
         }
+        .lineLimit(1)
+        .frame(width: geo.size.width, height: geo.size.height, alignment: .leading)
       }
     }
   }

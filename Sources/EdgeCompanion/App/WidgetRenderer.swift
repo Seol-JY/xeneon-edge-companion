@@ -3,7 +3,8 @@ import EdgeCore
 import SwiftUI
 
 /// Diagnostic: renders widgets to PNG files without touching the dashboard layout.
-///   EdgeCompanion --render-widgets <folder> [kind ...] [--cell 492x339]
+///   EdgeCompanion --render-widgets <folder> [kind ...] [--cell 492x339] [--music-demo [artwork]]
+/// `--music-demo` fills in a playing track so the clock renders its Apple Music page.
 @MainActor
 enum WidgetRenderer {
   static func run(arguments: [String]) {
@@ -18,7 +19,15 @@ enum WidgetRenderer {
       let parts = arguments[c + 1].split(separator: "x").compactMap { Double($0) }
       if parts.count == 2 { cell = CGSize(width: parts[0], height: parts[1]) }
     }
-    let requested = arguments.dropFirst(i + 2).compactMap(WidgetKind.init(rawValue:))
+    let requested = arguments.dropFirst(i + 2).prefix { !$0.hasPrefix("--") }.compactMap(WidgetKind.init(rawValue:))
+    var musicDemo = false
+    if let m = arguments.firstIndex(of: "--music-demo") ?? arguments.firstIndex(of: "--music-demo-paused") {
+      musicDemo = true
+      let path = arguments.count > m + 1 && !arguments[m + 1].hasPrefix("--") ? arguments[m + 1] : nil
+      MusicController.shared.preview(title: "Midnight City", artist: "M83", album: "Hurry Up, We're Dreaming",
+                                     duration: 243, position: 88, artwork: path.flatMap { NSImage(contentsOfFile: $0) },
+                                     paused: arguments[m] == "--music-demo-paused")
+    }
     let kinds = requested.isEmpty ? [WidgetKind.timer, .volume] : Array(requested)
 
     // Widgets that load data on appear need it before an offscreen render.
@@ -28,7 +37,9 @@ enum WidgetRenderer {
     for kind in kinds {
       for size in [WidgetSize.small, .wide] {
         let frame = CGSize(width: cell.width * CGFloat(size.columns) + 12 * CGFloat(size.columns - 1), height: cell.height)
-        let view = WidgetHost(slot: WidgetSlot(kind: kind, size: size))
+        let slot = WidgetSlot(kind: kind, size: size)
+        if musicDemo { TilePager.shared.show(slot.id, page: 1) }
+        let view = WidgetHost(slot: slot)
           .frame(width: frame.width, height: frame.height)
           .padding(12)
           .background(Theme.background)

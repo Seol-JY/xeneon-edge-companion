@@ -18,6 +18,17 @@ final class TilePager: ObservableObject {
     if let p = pages[id], p >= count { pages[id] = max(0, count - 1) }
   }
 
+  func setCount(_ id: UUID, count: Int) {
+    counts[id] = count
+    if let p = pages[id], p >= count { pages[id] = max(0, count - 1) }
+  }
+
+  /// Turns to `page` without a swipe, even before the widget has registered (it clamps then).
+  func show(_ id: UUID, page: Int) {
+    guard page != self.page(of: id) else { return }
+    withAnimation(.easeInOut(duration: 0.35)) { pages[id] = max(page, 0) }
+  }
+
   func unregister(_ id: UUID) {
     counts[id] = nil
     frames[id] = nil
@@ -39,21 +50,34 @@ final class TilePager: ObservableObject {
 }
 
 /// A widget card whose content has several pages, with dots along the bottom.
-struct PagedCard<Content: View>: View {
+struct PagedCard<Content: View, Backdrop: View>: View {
   let id: UUID
   let count: Int
   @ViewBuilder var content: (Int) -> Content
+  @ViewBuilder var backdrop: (Int) -> Backdrop
   @ObservedObject private var pager = TilePager.shared
 
-  init(id: UUID, count: Int, @ViewBuilder content: @escaping (Int) -> Content) {
+  init(id: UUID, count: Int, @ViewBuilder content: @escaping (Int) -> Content) where Backdrop == EmptyView {
+    self.init(id: id, count: count, backdrop: { _ in EmptyView() }, content: content)
+  }
+
+  /// `backdrop` fills the whole card behind a page and fades with it.
+  init(id: UUID, count: Int, @ViewBuilder backdrop: @escaping (Int) -> Backdrop, @ViewBuilder content: @escaping (Int) -> Content) {
     self.id = id
     self.count = count
     self.content = content
+    self.backdrop = backdrop
   }
 
   var body: some View {
     let current = min(pager.page(of: id), count - 1)
     WidgetCard {
+      ZStack {
+        backdrop(current)
+          .id(current)
+          .transition(.opacity)
+      }
+    } content: {
       ZStack {
         content(current)
           .id(current)
@@ -82,6 +106,7 @@ struct PagedCard<Content: View>: View {
           .onChange(of: geo.frame(in: .global)) { _, frame in pager.register(id, count: count, frame: frame) }
       }
     )
+    .onChange(of: count) { _, c in pager.setCount(id, count: c) }
     .onDisappear { pager.unregister(id) }
   }
 }
