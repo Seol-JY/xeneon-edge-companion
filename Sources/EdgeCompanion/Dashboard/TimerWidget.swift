@@ -45,6 +45,16 @@ final class TimerModel: ObservableObject {
     if phase == .finished || phase == .idle { resume() }
   }
 
+  /// Takes a minute off, never going below one minute left.
+  func subtractMinute() {
+    guard canSubtractMinute else { return }
+    total = max(60, total - 60)
+    remaining -= 60
+    if phase == .running { endDate = endDate?.addingTimeInterval(-60) }
+  }
+
+  var canSubtractMinute: Bool { phase != .finished && remaining > 60 }
+
   func reset() {
     stopTicker()
     phase = .idle
@@ -99,7 +109,7 @@ struct TimerWidget: View {
     WidgetCard {
       GeometryReader { geo in
         let controls: CGFloat = min(52, geo.size.height * 0.17)
-        // Two rows, centred both ways: the time, then reset / +1 / start.
+        // Two rows, centred both ways: the time, then reset / −1 / +1 / start.
         VStack(alignment: .center, spacing: 16) {
           Text(timeText)
             .font(Theme.number(min(geo.size.height * 0.34, geo.size.width * 0.27, 110), weight: .bold))
@@ -108,6 +118,9 @@ struct TimerWidget: View {
             .lineLimit(1)
           HStack(spacing: 12) {
             RoundButton(symbol: "arrow.counterclockwise", size: controls * 0.86) { timer.reset() }
+            RoundButton(symbol: "minus", size: controls * 0.86) { timer.subtractMinute() }
+              .opacity(timer.canSubtractMinute ? 1 : 0.35)
+              .disabled(!timer.canSubtractMinute)
             RoundButton(symbol: "plus", size: controls * 0.86) { timer.addMinute() }
             playButton(height: controls)
           }

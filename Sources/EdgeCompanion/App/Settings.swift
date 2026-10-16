@@ -19,11 +19,15 @@ enum TerminalSide: String, Codable, CaseIterable {
 enum WidgetKind: String, Codable, CaseIterable, Identifiable {
   /// `network` also pages to disk activity; `system` pages to top processes.
   case clock, cpu, gpu, memory, network, sensors, battery, launcher, system, aiUsage, timer, volume
+  /// A web page (address in `AppSettings.webURL`).
+  case web
+  /// A photo, GIF or video on loop (file in `AppSettings.mediaItems`); any number may be placed.
+  case media
   /// An empty cell for spacing; any number of them may be placed.
   case spacer
   var id: String { rawValue }
 
-  var allowsMultiple: Bool { self == .spacer }
+  var allowsMultiple: Bool { self == .spacer || self == .media }
 
   /// Kinds from earlier versions, folded into the current ones (nil: dropped).
   static func migrating(_ raw: String) -> WidgetKind? {
@@ -108,6 +112,16 @@ struct LauncherItem: Codable, Equatable, Identifiable {
   var target: String
 }
 
+/// The file shown by one media widget.
+struct MediaItem: Codable, Equatable {
+  /// Name of the copy in `MediaLibrary.folder`.
+  var file: String
+  /// Name of the file the user picked, for display.
+  var originalName: String
+  /// Fill the card (cropping) rather than fit inside it.
+  var fill = true
+}
+
 struct AppSettings: Codable, Equatable {
   var language: AppLanguage = .system
 
@@ -142,6 +156,11 @@ struct AppSettings: Codable, Equatable {
     LauncherItem(title: "Activity Monitor", target: "com.apple.ActivityMonitor"),
     LauncherItem(title: "System Settings", target: "com.apple.systempreferences"),
   ]
+  /// Page shown by the web widget; a bare host gets https://.
+  var webURL = ""
+  var webZoom = 1.0
+  /// Media widget files by slot id (uuidString).
+  var mediaItems: [String: MediaItem] = [:]
 
   var profiles: [String: EdgeProfile] = [:]
 
@@ -186,6 +205,9 @@ struct AppSettings: Codable, Equatable {
       pages = Self.migratedPages(from: legacy)
     }
     launcherItems = v(.launcherItems, launcherItems)
+    webURL = v(.webURL, webURL)
+    webZoom = v(.webZoom, webZoom)
+    mediaItems = v(.mediaItems, mediaItems)
     profiles = v(.profiles, profiles)
   }
 }

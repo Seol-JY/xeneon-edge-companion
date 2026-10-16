@@ -149,6 +149,8 @@ struct WidgetHost: View {
     case .aiUsage: UsageWidget()
     case .timer: TimerWidget()
     case .volume: VolumeWidget(id: slot.id)
+    case .web: WebWidget()
+    case .media: MediaWidget(slotID: slot.id)
     case .spacer: Color.clear
     default: TelemetryWidget(kind: slot.kind, slotID: slot.id)
     }

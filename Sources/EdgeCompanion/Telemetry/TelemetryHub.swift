@@ -31,6 +31,7 @@ enum MetricKind: Hashable, CaseIterable {
     didSet {
       guard isSuspended != oldValue else { return }
       apply()
+      NotificationCenter.default.post(name: .edgeDashboardSuspensionChanged, object: nil)
     }
   }
 

@@ -25,9 +25,12 @@ dashboard. It is an unofficial project and not affiliated with Corsair.
   drag, and long press for right-click. Touching the dashboard doesn't move the mouse cursor.
 - Dashboard widgets: clock, CPU per core, GPU, memory, network and disk, temperatures, power and
   Bluetooth device batteries, Claude Code and Codex usage limits, volume and output device,
-  timer, app launcher, system info, and an optional terminal on one side.
+  timer (±1 minute), app launcher, system info, and an optional terminal on one side.
 - Apple Music on the clock widget's second page: artwork, track, progress (tap to seek) and
   playback buttons. It comes to the front while music plays and steps back once playback stops.
+- A web page widget showing any address you set, with logins kept between launches.
+- Photo and video widgets (as many as you like): a photo, GIF or video filling the card on an
+  endless loop, muted and paused while the Edge is off.
 - Widgets in 1×1, 2×1, 1×2 and 2×2 sizes, several dashboard pages, widgets with their own pages,
   and a layout editor in Settings.
 - Panel white balance over DDC/CI. The values are stored in the panel, so they stay after the
@@ -86,6 +89,12 @@ display mode, applies color presets and opens Settings.
   pages; swipe on the widget or tap a dot.
 - Settings → Dashboard → Widget layout: drag tiles to reorder them, click a tile to change its
   size, move it to another page or remove it. "Empty space" tiles can be used for gaps.
+- Web page widget: set the address and zoom in Settings → Dashboard → Web page widget. "Open"
+  shows the same page in a window on the main display, for signing in with a keyboard; the widget
+  shares its cookies. Links that leave the page show a home button on the widget.
+- Photo and video widgets: click the tile in the widget layout, then "Choose file…". The file is
+  copied into `~/Library/Application Support/EdgeCompanion/Media`, so the original can be moved or
+  deleted. Fill crops to the card; Fit shows the whole picture.
 - If tmux is installed, the terminal runs in its own tmux server and keeps running when the app
   restarts. Attach from another terminal with `tmux -L edge attach -t edge`.
 
@@ -113,8 +122,12 @@ MonitorControl.
 
 ## Privacy and security
 
-- The app makes no network requests. The Codex CLI makes its own request when the usage widget
+- Network requests are made only by features you turn on: the web page widget loads its page,
+  and for Apple Music tracks without artwork the track's title and artist are sent to Apple's
+  iTunes Search API to find the cover. The Codex CLI makes its own request when the usage widget
   is shown.
+- Apple Music is read through its own notifications and AppleScript; macOS asks once for
+  Automation permission.
 - Connecting Claude Code rewrites `~/.claude/settings.json` after saving a timestamped backup next
   to it. Disconnect removes the entry.
 - Without the Codex CLI, the newest Codex session log is read for its `rate_limits` record only.

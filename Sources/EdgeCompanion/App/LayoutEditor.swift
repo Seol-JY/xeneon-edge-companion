@@ -46,6 +46,8 @@ struct LayoutEditor: View {
       .fixedSize()
     }
     .onChange(of: pages.count) { _, count in pageIndex = min(pageIndex, max(count - 1, 0)) }
+    // Removing a media widget frees its copied file.
+    .onChange(of: pages) { _, _ in MediaLibrary.prune() }
   }
 
   // MARK: Preview
@@ -113,6 +115,35 @@ struct LayoutEditor: View {
   }
 
   private func selectionControls(_ slot: WidgetSlot) -> some View {
+    VStack(alignment: .leading, spacing: 8) {
+      sizeControls(slot)
+      if slot.kind == .media { mediaControls(slot) }
+    }
+  }
+
+  private func mediaControls(_ slot: WidgetSlot) -> some View {
+    let key = slot.id.uuidString
+    let item = store.settings.mediaItems[key]
+    return HStack(spacing: 10) {
+      Image(systemName: "photo").foregroundStyle(.secondary)
+      Text(item?.originalName ?? tr("파일 없음", "No file")).lineLimit(1).truncationMode(.middle)
+      Button(tr("파일 선택…", "Choose file…")) { MediaLibrary.choose(for: slot.id) }
+      if item != nil {
+        Picker(tr("맞춤", "Fit"), selection: Binding(
+          get: { store.settings.mediaItems[key]?.fill ?? true },
+          set: { store.settings.mediaItems[key]?.fill = $0 })) {
+          Text(tr("채우기", "Fill")).tag(true)
+          Text(tr("맞추기", "Fit")).tag(false)
+        }
+        .pickerStyle(.segmented)
+        .labelsHidden()
+        .frame(width: 140)
+      }
+      Spacer()
+    }
+  }
+
+  private func sizeControls(_ slot: WidgetSlot) -> some View {
     HStack(spacing: 10) {
       Text(slot.kind.title).font(.headline)
       Picker(tr("크기", "Size"), selection: Binding(get: { slot.size }, set: { resize(slot.id, $0) })) {
@@ -229,6 +260,8 @@ extension WidgetKind {
     case .aiUsage: return "sparkle"
     case .timer: return "timer"
     case .volume: return "speaker.wave.2.fill"
+    case .web: return "globe"
+    case .media: return "photo.on.rectangle.angled"
     case .spacer: return "square.dashed"
     }
   }

@@ -308,6 +308,7 @@ private struct DashboardTab: View {
         LayoutEditor(store: store)
       }
       UsageSection()
+      WebPageSection(store: store)
       Section(tr("런처", "Launcher")) {
         ForEach(store.settings.launcherItems) { item in
           HStack {
@@ -355,8 +356,52 @@ extension WidgetKind {
     case .aiUsage: return tr("AI 사용량", "AI usage")
     case .timer: return tr("타이머", "Timer")
     case .volume: return tr("볼륨", "Volume")
+    case .web: return tr("웹페이지", "Web page")
+    case .media: return tr("사진·영상", "Photo & video")
     case .spacer: return tr("빈 공간", "Empty space")
     }
+  }
+}
+
+// MARK: - Web page widget
+
+private struct WebPageSection: View {
+  @ObservedObject var store: SettingsStore
+  @State private var draft = ""
+
+  var body: some View {
+    Section(tr("웹페이지 위젯", "Web page widget")) {
+      HStack {
+        TextField(tr("주소", "Address"), text: $draft, prompt: Text("https://…"))
+          .onSubmit(apply)
+        Button(tr("적용", "Apply"), action: apply)
+          .disabled(draft == store.settings.webURL)
+      }
+      if !draft.isEmpty, WebWidgetModel.url(from: draft) == nil {
+        Text(tr("주소 형식이 올바르지 않아요", "That doesn't look like a web address")).font(.caption).foregroundStyle(.orange)
+      }
+      LabeledContent(tr("확대", "Zoom")) {
+        Slider(value: $store.settings.webZoom, in: 0.5 ... 1.5, step: 0.05).frame(width: 260)
+        Text("\(Int((store.settings.webZoom * 100).rounded()))%").monospacedDigit().frame(width: 48)
+      }
+      HStack {
+        Text(tr("메인 화면에서 창을 엽니다 (로그인이 필요한 경우 사용)", "Opens a window on the main display (use it when you need to sign in)"))
+          .font(.caption).foregroundStyle(.secondary)
+        Spacer()
+        Button(tr("확인하기", "Open")) { WebLoginWindow.shared.show(store.settings.webURL) }
+          .disabled(WebWidgetModel.url(from: store.settings.webURL) == nil)
+        Button(tr("새로고침", "Reload")) { WebWidgetModel.shared.reload() }
+          .disabled(WebWidgetModel.url(from: store.settings.webURL) == nil)
+      }
+    }
+    .onAppear { draft = store.settings.webURL }
+  }
+
+  private func apply() {
+    let trimmed = draft.trimmingCharacters(in: .whitespacesAndNewlines)
+    guard trimmed.isEmpty || WebWidgetModel.url(from: trimmed) != nil else { return }
+    draft = trimmed
+    store.settings.webURL = trimmed
   }
 }
 
