@@ -181,7 +181,6 @@ scripts/                빌드, 서명, 테스트 스크립트
 
 ```sh
 scripts/test.sh                                   # 단위 테스트
-dist/EdgeCompanion.app/Contents/MacOS/EdgeCompanion --render-widgets /tmp/w timer volume   # 위젯을 PNG로 렌더링
 ```
 
 ## 참고한 프로젝트

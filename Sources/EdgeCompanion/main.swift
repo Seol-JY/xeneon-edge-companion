@@ -9,11 +9,7 @@ if CommandLine.arguments.contains(ClaudeStatusLine.flag) {
   exit(0)
 }
 
-// Diagnostic entry points (run from a terminal, no UI).
-if CommandLine.arguments.contains("--render-widgets") {
-  MainActor.assumeIsolated { WidgetRenderer.run(arguments: CommandLine.arguments) }
-  exit(0)
-}
+// Diagnostic entry point (run from a terminal, no UI).
 if CommandLine.arguments.contains("--telemetry-dump") {
   MainActor.assumeIsolated { TelemetryDebug.run() }
   exit(0)

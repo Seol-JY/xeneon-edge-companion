@@ -188,7 +188,6 @@ scripts/                Build, signing and test scripts
 
 ```sh
 scripts/test.sh                                   # unit tests
-dist/EdgeCompanion.app/Contents/MacOS/EdgeCompanion --render-widgets /tmp/w timer volume   # render widgets to PNG
 ```
 
 ## Acknowledgements
