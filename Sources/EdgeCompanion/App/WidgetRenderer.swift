@@ -3,7 +3,7 @@ import EdgeCore
 import SwiftUI
 
 /// Diagnostic: renders widgets to PNG files without touching the dashboard layout.
-///   EdgeCompanion --render-widgets <folder> [kind ...] [--cell 492x339] [--music-demo [artwork]] [--awake-demo [minutes]]
+///   EdgeCompanion --render-widgets <folder> [kind ...] [--cell 492x339] [--music-demo [artwork]] [--awake-demo [minutes]] [--discord-demo off|idle|basic|call]
 /// `--music-demo` fills in a playing track so the clock renders its Apple Music page.
 @MainActor
 enum WidgetRenderer {
@@ -31,6 +31,9 @@ enum WidgetRenderer {
     if let a = arguments.firstIndex(of: "--awake-demo") {
       let minutes = arguments.count > a + 1 ? Int(arguments[a + 1]) ?? 60 : 60
       AwakeModel.shared.preview(minutes: minutes, left: 47 * 60 + 12)
+    }
+    if let d = arguments.firstIndex(of: "--discord-demo") {
+      DiscordController.shared.preview(arguments.count > d + 1 ? arguments[d + 1] : "call")
     }
     let kinds = requested.isEmpty ? [WidgetKind.timer, .volume] : Array(requested)
 

@@ -21,6 +21,8 @@ enum WidgetKind: String, Codable, CaseIterable, Identifiable {
   case clock, cpu, gpu, memory, network, sensors, battery, launcher, system, aiUsage, timer, volume
   /// Keep-awake durations and a sleep button.
   case sleep
+  /// Discord voice: on a call or not, and with a linked app, who is in it.
+  case discord
   /// A web page (address in `AppSettings.webURL`).
   case web
   /// A photo, GIF or video on loop (file in `AppSettings.mediaItems`); any number may be placed.
@@ -161,6 +163,8 @@ struct AppSettings: Codable, Equatable {
   /// Page shown by the web widget; a bare host gets https://.
   var webURL = ""
   var webZoom = 1.0
+  /// The user's own Discord application for the RPC link; its secret is in the keychain.
+  var discordClientID = ""
   /// Media widget files by slot id (uuidString).
   var mediaItems: [String: MediaItem] = [:]
 
@@ -209,6 +213,7 @@ struct AppSettings: Codable, Equatable {
     launcherItems = v(.launcherItems, launcherItems)
     webURL = v(.webURL, webURL)
     webZoom = v(.webZoom, webZoom)
+    discordClientID = v(.discordClientID, discordClientID)
     mediaItems = v(.mediaItems, mediaItems)
     profiles = v(.profiles, profiles)
   }

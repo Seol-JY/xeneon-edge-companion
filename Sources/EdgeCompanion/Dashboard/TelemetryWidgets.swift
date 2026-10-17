@@ -17,7 +17,7 @@ struct TelemetryWidget: View {
     case .sensors: SensorsWidget(sensors: hub.sensors).retaining(.sensors)
     case .battery: BatteryWidget(battery: hub.battery, bluetooth: hub.bluetooth, sensors: hub.sensors).retaining(.battery).retaining(.bluetooth).retaining(.sensors)
     case .system: SystemWidget(id: slotID, system: hub.system, cpu: hub.cpu).retaining(.system).retaining(.cpu)
-    case .clock, .launcher, .aiUsage, .timer, .volume, .sleep, .web, .media, .spacer: EmptyView()
+    case .clock, .launcher, .aiUsage, .timer, .volume, .sleep, .discord, .web, .media, .spacer: EmptyView()
     }
   }
 }

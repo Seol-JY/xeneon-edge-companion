@@ -75,3 +75,9 @@ LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
 OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 SOFTWARE.
 ```
+
+## Trademarks
+
+The Discord symbol in `Sources/EdgeCompanion/Dashboard/DiscordLogo.swift` comes from Discord's
+brand assets and is a trademark of Discord Inc. It only marks the Discord widget; EdgeCompanion is
+not affiliated with or endorsed by Discord.

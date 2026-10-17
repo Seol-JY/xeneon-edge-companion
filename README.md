@@ -33,6 +33,9 @@ dashboard. It is an unofficial project and not affiliated with Corsair.
   endless loop, muted and paused while the Edge is off. Tap to pause or resume.
 - A sleep widget: keeps the Mac and its displays awake for 1, 4, 8 or 24 hours (like
   `caffeinate -d`), and swiping up on it then tapping puts the Mac to sleep.
+- A Discord widget: shows when you're on a call with no setup.
+  Linked to your own Discord application, it also shows the channel, who is in it and speaking,
+  and controls Discord's mute, deafen and leave.
 - Widgets in 1×1, 2×1, 1×2 and 2×2 sizes, several dashboard pages, widgets with their own pages,
   and a layout editor in Settings.
 - Panel white balance over DDC/CI. The values are stored in the panel, so they stay after the
@@ -48,7 +51,7 @@ dashboard. It is an unofficial project and not affiliated with Corsair.
 ## Widgets
 
 <p align="center">
-  <img src="docs/widgets.png" alt="Dashboard widgets: clock, temperatures, memory, launcher, CPU, Claude Code and Codex usage, volume, system info, power, network, a looping video, GPU, the sleep widget and the timer" width="100%">
+  <img src="docs/widgets.png" alt="Dashboard widgets: clock, temperatures, memory, launcher, CPU, Claude Code and Codex usage, volume, system info, power, network, a looping video, GPU, Discord on a call, the sleep widget and the timer" width="100%">
 </p>
 
 ## In use
@@ -103,6 +106,10 @@ display mode, applies color presets and opens Settings.
 - Photo and video widgets: click the tile in the widget layout, then "Choose file…". The file is
   copied into `~/Library/Application Support/EdgeCompanion/Media`, so the original can be moved or
   deleted. Fill crops to the card; Fit shows the whole picture.
+- Discord widget: works as is. To see members, open Settings → Dashboard → Discord → How to link.
+  Discord only opens voice data to an application's own testers, so each user creates an
+  application on the developer portal, adds `http://localhost` to its OAuth2 redirects, pastes its
+  Client ID and Client Secret, and approves the prompt in Discord.
 - If tmux is installed, the terminal runs in its own tmux server and keeps running when the app
   restarts. Attach from another terminal with `tmux -L edge attach -t edge`.
 
@@ -133,7 +140,11 @@ MonitorControl.
 - Network requests are made only by features you turn on: the web page widget loads its page,
   and for Apple Music tracks without artwork the track's title and artist are sent to Apple's
   iTunes Search API to find the cover. The Codex CLI makes its own request when the usage widget
-  is shown.
+  is shown. A linked Discord widget exchanges its token with discord.com and loads avatars from
+  Discord's CDN.
+- Discord is read over the desktop client's local RPC socket; the Client Secret and tokens are
+  kept in the login keychain. Without a link, only Core Audio's list of which apps use the
+  microphone is checked.
 - Apple Music is read through its own notifications and AppleScript; macOS asks once for
   Automation permission.
 - Connecting Claude Code rewrites `~/.claude/settings.json` after saving a timestamped backup next

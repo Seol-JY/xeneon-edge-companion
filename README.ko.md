@@ -33,6 +33,8 @@ macOS용 iCUE는 XENEON EDGE를 지원하지 않습니다. 터치가 다른 화�
   재생합니다. Edge가 꺼져 있으면 재생을 멈추고, 탭하면 멈추거나 이어서 재생합니다.
 - 잠자기 위젯은 맥과 디스플레이를 1, 4, 8, 24시간 동안 깨어 있게 합니다(`caffeinate -d`와 같음).
   위젯을 위로 밀고 한 번 더 탭하면 맥을 잠재웁니다.
+- Discord 위젯은 설정 없이도 통화 중인지 보여 줍니다. 내 Discord 앱을
+  연결하면 채널, 참여자, 말하는 사람까지 보여 주고 Discord 음소거, 헤드셋 음소거, 나가기를 다룹니다.
 - 위젯 크기는 1×1, 2×1, 1×2, 2×2입니다. 대시보드 페이지를 여러 개 만들 수 있고, 위젯 안에도
   페이지가 있습니다. 배치는 설정의 편집기에서 바꿉니다.
 - DDC/CI로 패널의 화이트 밸런스를 설정합니다. 값이 패널에 저장되므로 앱을 종료해도 유지됩니다.
@@ -47,7 +49,7 @@ macOS용 iCUE는 XENEON EDGE를 지원하지 않습니다. 터치가 다른 화�
 ## 위젯
 
 <p align="center">
-  <img src="docs/widgets.png" alt="대시보드 위젯: 시계, 온도, 메모리, 런처, CPU, Claude Code·Codex 사용량, 볼륨, 시스템 정보, 전원, 네트워크, 반복 재생 영상, GPU, 잠자기 위젯, 타이머" width="100%">
+  <img src="docs/widgets.png" alt="대시보드 위젯: 시계, 온도, 메모리, 런처, CPU, Claude Code·Codex 사용량, 볼륨, 시스템 정보, 전원, 네트워크, 반복 재생 영상, GPU, 통화 중인 Discord, 잠자기 위젯, 타이머" width="100%">
 </p>
 
 ## 사용 모습
@@ -102,6 +104,10 @@ macOS는 개인정보 권한을 코드 서명에 연결합니다. 로컬 인증�
 - 사진·영상 위젯: 위젯 배치에서 타일을 누른 뒤 "파일 선택…"을 누릅니다. 파일은
   `~/Library/Application Support/EdgeCompanion/Media`에 복사되므로 원본을 옮기거나 지워도 됩니다.
   "채우기"는 카드에 맞춰 자르고, "맞추기"는 전체를 보여 줍니다.
+- Discord 위젯: 그대로 동작합니다. 참여자까지 보려면 설정 → 대시보드 → Discord → 연결 방법을
+  따릅니다. Discord는 음성 정보를 앱의 테스터에게만 열어 주기 때문에, 각자 개발자 페이지에서 앱을
+  만들고 OAuth2 Redirects에 `http://localhost`를 추가한 다음, Client ID와 Client Secret을 붙여 넣고
+  Discord 앱에서 승인해야 합니다.
 - tmux가 설치되어 있으면 터미널이 별도 tmux 서버에서 실행되어 앱을 다시 시작해도 유지됩니다. 다른
   터미널에서는 `tmux -L edge attach -t edge`로 접속합니다.
 
@@ -129,7 +135,10 @@ Anthropic 약관은 Claude 구독의 OAuth 토큰을 다른 앱에서 쓰는 것
 
 - 네트워크 요청은 켜 둔 기능에서만 보냅니다. 웹페이지 위젯은 설정한 페이지를 불러오고, 앨범 아트가
   없는 Apple Music 곡은 커버를 찾기 위해 곡명과 아티스트를 Apple의 iTunes Search API로 보냅니다.
-  사용량 위젯이 표시될 때 Codex CLI가 자체 요청을 보냅니다.
+  사용량 위젯이 표시될 때 Codex CLI가 자체 요청을 보냅니다. Discord를 연결하면 discord.com에서
+  토큰을 받고, 프로필 사진을 Discord CDN에서 불러옵니다.
+- Discord 정보는 데스크톱 앱의 로컬 RPC 소켓으로 읽고, Client Secret과 토큰은 로그인 키체인에
+  저장합니다. 연결하지 않으면 Core Audio에서 어떤 앱이 마이크를 쓰는지만 확인합니다.
 - Apple Music 정보는 Music 앱의 알림과 AppleScript로 읽습니다. macOS가 처음 한 번 자동화 권한을
   묻습니다.
 - Claude Code를 연결하면 `~/.claude/settings.json` 옆에 시각이 붙은 백업을 만든 뒤 파일을 다시

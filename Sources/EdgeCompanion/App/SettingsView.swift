@@ -309,6 +309,7 @@ private struct DashboardTab: View {
       }
       UsageSection()
       WebPageSection(store: store)
+      DiscordSection(store: store)
       Section(tr("런처", "Launcher")) {
         ForEach(store.settings.launcherItems) { item in
           HStack {
@@ -357,6 +358,7 @@ extension WidgetKind {
     case .timer: return tr("타이머", "Timer")
     case .volume: return tr("볼륨", "Volume")
     case .sleep: return tr("잠자기", "Sleep")
+    case .discord: return "Discord"
     case .web: return tr("웹페이지", "Web page")
     case .media: return tr("사진·영상", "Photo & video")
     case .spacer: return tr("빈 공간", "Empty space")
@@ -403,6 +405,128 @@ private struct WebPageSection: View {
     guard trimmed.isEmpty || WebWidgetModel.url(from: trimmed) != nil else { return }
     draft = trimmed
     store.settings.webURL = trimmed
+  }
+}
+
+// MARK: - Discord
+
+/// Basic mode needs nothing. Linking the user's own Discord application (RPC is only open to an
+/// app's own testers) adds the channel, members, speaking and Discord's mute controls.
+private struct DiscordSection: View {
+  @ObservedObject var store: SettingsStore
+  @ObservedObject private var discord = DiscordController.shared
+  @State private var clientID = ""
+  @State private var secret = ""
+  @State private var showSteps = false
+
+  var body: some View {
+    Section("Discord") {
+      Text(tr("설정 없이도 Discord가 마이크를 쓰면 통화 중으로 표시해요. 아래에서 연결하면 채널, 참여자, 말하는 사람을 보여 주고 음소거, 헤드셋 음소거, 나가기를 다룰 수 있어요.",
+              "Without setup, the widget shows a call whenever Discord uses the microphone. Link below to see the channel, members and who is speaking, and to mute, deafen or leave."))
+        .font(.caption).foregroundStyle(.secondary)
+      LabeledContent(tr("상태", "Status")) { Text(status).foregroundStyle(statusColor) }
+      if discord.linked {
+        HStack {
+          Spacer()
+          Button(tr("연결 해제", "Unlink")) { discord.unlink() }
+        }
+      } else {
+        DisclosureGroup(tr("연결 방법", "How to link"), isExpanded: $showSteps) {
+          VStack(alignment: .leading, spacing: 10) {
+            step(1, tr("Discord 개발자 페이지에서 New Application을 눌러 앱을 만들어요. 이름은 아무거나 괜찮아요.",
+                       "On the Discord developer portal, click New Application. Any name works."))
+            HStack {
+              Spacer()
+              Button(tr("개발자 페이지 열기", "Open developer portal")) {
+                NSWorkspace.shared.open(URL(string: "https://discord.com/developers/applications")!)
+              }
+            }
+            step(2, tr("왼쪽 OAuth2 메뉴의 Redirects에 아래 주소를 추가하고 저장해요.",
+                       "Under OAuth2 → Redirects, add the address below and save."))
+            HStack {
+              Text(DiscordController.redirectURI).font(.system(.callout, design: .monospaced)).textSelection(.enabled)
+              Spacer()
+              Button(tr("복사", "Copy")) {
+                NSPasteboard.general.clearContents()
+                NSPasteboard.general.setString(DiscordController.redirectURI, forType: .string)
+              }
+            }
+            step(3, tr("같은 화면에서 Client ID를 복사하고, Reset Secret을 눌러 Client Secret을 복사해요.",
+                       "On the same page, copy the Client ID, then click Reset Secret and copy the Client Secret."))
+            credentialField("Client ID") {
+              TextField("", text: $clientID, prompt: Text(tr("숫자로 된 ID", "A numeric ID")))
+            }
+            credentialField("Client Secret") {
+              SecureField("", text: $secret, prompt: Text(discord.hasCredentials ? tr("저장됨 · 바꿀 때만 입력", "Saved · enter only to change") : tr("Reset Secret으로 받은 값", "From Reset Secret")))
+            }
+            step(4, tr("연결을 누르면 Discord 앱에 승인 창이 떠요. 승인하면 끝이에요.",
+                       "Click Link and approve the prompt in the Discord app."))
+            Text(tr("Client Secret과 토큰은 로그인 키체인에 저장돼요. macOS가 EdgeCompanion의 키체인 접근을 물으면 \"항상 허용\"을 눌러 주세요. 그러면 다음부터는 묻지 않아요.",
+                    "The Client Secret and tokens are kept in the login keychain. If macOS asks whether EdgeCompanion may use it, click \"Always Allow\" so it won't ask again."))
+              .font(.caption).foregroundStyle(.secondary)
+              .fixedSize(horizontal: false, vertical: true)
+            HStack {
+              Spacer()
+              Button(tr("연결", "Link")) {
+                discord.link(clientID: clientID, secret: secret)
+                secret = ""
+              }
+              .disabled(clientID.trimmingCharacters(in: .whitespaces).isEmpty || (secret.isEmpty && !discord.hasCredentials) || !discord.running)
+            }
+            if !discord.running {
+              Text(tr("Discord 앱을 먼저 켜 주세요.", "Open the Discord app first."))
+                .font(.caption).foregroundStyle(.orange)
+            }
+          }
+          .padding(.top, 6)
+        }
+      }
+    }
+    .onAppear {
+      clientID = store.settings.discordClientID
+      discord.retain()
+    }
+    .onDisappear { discord.release() }
+  }
+
+  /// A labelled, bordered field so the keys stand apart from the instructions around them.
+  private func credentialField<Field: View>(_ label: String, @ViewBuilder field: () -> Field) -> some View {
+    HStack(spacing: 10) {
+      Text(label)
+        .font(.callout.weight(.medium))
+        .frame(width: 96, alignment: .leading)
+      field()
+        .textFieldStyle(.roundedBorder)
+        .font(.system(.body, design: .monospaced))
+        .labelsHidden()
+    }
+    .padding(10)
+    .background(RoundedRectangle(cornerRadius: 8).fill(Color.primary.opacity(0.05)))
+  }
+
+  private func step(_ n: Int, _ text: String) -> some View {
+    HStack(alignment: .firstTextBaseline, spacing: 8) {
+      Text("\(n)").font(.caption.bold()).foregroundStyle(.secondary).frame(width: 14)
+      Text(text).font(.callout).fixedSize(horizontal: false, vertical: true)
+    }
+  }
+
+  private var status: String {
+    switch discord.link {
+    case .off: return tr("기본 모드 (연결 안 됨)", "Basic (not linked)")
+    case .connecting: return tr("연결하는 중…", "Connecting…")
+    case .authorizing: return tr("Discord 앱에서 승인을 기다리는 중", "Waiting for approval in Discord")
+    case let .ready(user): return user.isEmpty ? tr("연결됨", "Linked") : tr("연결됨 · \(user)", "Linked · \(user)")
+    case let .failed(message): return tr("연결 실패: \(message)", "Failed: \(message)")
+    }
+  }
+
+  private var statusColor: Color {
+    switch discord.link {
+    case .ready: return .green
+    case .failed: return .orange
+    default: return .secondary
+    }
   }
 }
 

@@ -152,6 +152,7 @@ struct WidgetHost: View {
     case .timer: TimerWidget()
     case .volume: VolumeWidget(id: slot.id)
     case .sleep: SleepWidget()
+    case .discord: DiscordWidget()
     case .web: WebWidget()
     case .media: MediaWidget(slotID: slot.id)
     case .spacer: Color.clear
