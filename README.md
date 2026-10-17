@@ -30,7 +30,7 @@ dashboard. It is an unofficial project and not affiliated with Corsair.
   playback buttons. It comes to the front while music plays and steps back once playback stops.
 - A web page widget showing any address you set, with logins kept between launches.
 - Photo and video widgets (as many as you like): a photo, GIF or video filling the card on an
-  endless loop, muted and paused while the Edge is off.
+  endless loop, muted and paused while the Edge is off. Tap to pause or resume.
 - A sleep widget: keeps the Mac and its displays awake for 1, 4, 8 or 24 hours (like
   `caffeinate -d`), and swiping up on it then tapping puts the Mac to sleep.
 - Widgets in 1×1, 2×1, 1×2 and 2×2 sizes, several dashboard pages, widgets with their own pages,
@@ -44,6 +44,12 @@ dashboard. It is an unofficial project and not affiliated with Corsair.
 - Uses about 1–2% of one CPU core while the dashboard is visible, and stops sampling while the
   Edge is asleep or unplugged.
 - English and Korean UI.
+
+## Widgets
+
+<p align="center">
+  <img src="docs/widgets.png" alt="Dashboard widgets: clock, temperatures, memory, launcher, CPU, Claude Code and Codex usage, volume, system info, power, network, a looping video, GPU, the sleep widget and the timer" width="100%">
+</p>
 
 ## In use
 
