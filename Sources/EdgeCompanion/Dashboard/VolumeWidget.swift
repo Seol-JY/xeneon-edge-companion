@@ -236,7 +236,7 @@ struct TapBar: View {
         set(Double(min(max(location.x / geo.size.width, 0), 1)))
       }
     }
-    .transaction { $0.animation = nil }
+    .animation(nil, value: value)
   }
 }
 

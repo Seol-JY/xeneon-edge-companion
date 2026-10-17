@@ -88,7 +88,8 @@ struct UsageBar: View {
       }
     }
     .frame(height: height)
-    .transaction { $0.animation = nil }
+    // Only new readings jump; a page sliding past still carries the bar along.
+    .animation(nil, value: value)
   }
 }
 
@@ -109,7 +110,7 @@ struct RingGauge: View {
         .rotationEffect(.degrees(-90))
     }
     .padding(lineWidth / 2)
-    .transaction { $0.animation = nil }
+    .animation(nil, value: value)
   }
 
   private var style: AnyShapeStyle {

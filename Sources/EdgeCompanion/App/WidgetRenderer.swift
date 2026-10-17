@@ -38,7 +38,10 @@ enum WidgetRenderer {
       for size in [WidgetSize.small, .wide] {
         let frame = CGSize(width: cell.width * CGFloat(size.columns) + 12 * CGFloat(size.columns - 1), height: cell.height)
         let slot = WidgetSlot(kind: kind, size: size)
-        if musicDemo { TilePager.shared.show(slot.id, page: 1) }
+        if musicDemo {
+          TilePager.shared.show(slot.id, page: 1)
+          RunLoop.main.run(until: Date().addingTimeInterval(0.05))   // the page turns on the next pass
+        }
         let view = WidgetHost(slot: slot)
           .frame(width: frame.width, height: frame.height)
           .padding(12)

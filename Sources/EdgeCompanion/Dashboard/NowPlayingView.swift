@@ -205,7 +205,7 @@ private struct PlaybackProgress: View {
       .font(Theme.number(12.5, weight: .semibold))
       .foregroundStyle(Color.white.opacity(0.52))
     }
-    .transaction { $0.animation = nil }
+    .animation(nil, value: position)
   }
 
   private static func clock(_ t: TimeInterval) -> String {

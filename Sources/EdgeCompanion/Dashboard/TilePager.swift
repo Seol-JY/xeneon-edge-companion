@@ -6,11 +6,14 @@ final class TilePager: ObservableObject {
   static let shared = TilePager()
 
   @Published private(set) var pages: [UUID: Int] = [:]
+  /// +1 when the last turn went forward, -1 when it went back; picks which way the pages slide.
+  @Published private(set) var directions: [UUID: Int] = [:]
   private var counts: [UUID: Int] = [:]
   /// Tile frames in the dashboard's top-left window coordinates.
   private var frames: [UUID: CGRect] = [:]
 
   func page(of id: UUID) -> Int { pages[id] ?? 0 }
+  func direction(of id: UUID) -> Int { directions[id] ?? 1 }
 
   func register(_ id: UUID, count: Int, frame: CGRect) {
     counts[id] = count
@@ -26,7 +29,7 @@ final class TilePager: ObservableObject {
   /// Turns to `page` without a swipe, even before the widget has registered (it clamps then).
   func show(_ id: UUID, page: Int) {
     guard page != self.page(of: id) else { return }
-    withAnimation(.easeInOut(duration: 0.35)) { pages[id] = max(page, 0) }
+    turn(id, to: max(page, 0))
   }
 
   func unregister(_ id: UUID) {
@@ -38,7 +41,17 @@ final class TilePager: ObservableObject {
     let count = counts[id] ?? 1
     let next = min(max(page, 0), count - 1)
     guard next != self.page(of: id) else { return }
-    withAnimation(.easeInOut(duration: 0.25)) { pages[id] = next }
+    turn(id, to: next)
+  }
+
+  /// The direction is set in its own update first: the outgoing page slides away with the
+  /// transition it was last drawn with, so it has to know the new direction before it leaves.
+  private func turn(_ id: UUID, to page: Int) {
+    let direction = page > self.page(of: id) ? 1 : -1
+    if directions[id] != direction { directions[id] = direction }
+    DispatchQueue.main.async {
+      withAnimation(.spring(response: 0.38, dampingFraction: 0.92)) { self.pages[id] = page }
+    }
   }
 
   /// Returns true if a multi-page widget under `point` took the swipe.
@@ -71,20 +84,25 @@ struct PagedCard<Content: View, Backdrop: View>: View {
 
   var body: some View {
     let current = min(pager.page(of: id), count - 1)
+    let slide = Self.slide(pager.direction(of: id))
     WidgetCard {
       ZStack {
         backdrop(current)
           .id(current)
-          .transition(.opacity)
+          .transition(slide)
       }
     } content: {
+      // Pages slide across the whole card, so they are laid out over its padding and clipped to it.
       ZStack {
         content(current)
-          .id(current)
-          .transition(.opacity)
           .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topLeading)
+          .padding(.bottom, count > 1 ? 14 : 0)
+          .padding(Self.inset)
+          .id(current)
+          .transition(slide)
       }
-      .padding(.bottom, count > 1 ? 14 : 0)
+      .clipShape(RoundedRectangle(cornerRadius: Theme.cornerRadius, style: .continuous))
+      .padding(-Self.inset)
       .overlay(alignment: .bottom) {
         if count > 1 {
           HStack(spacing: 6) {
@@ -96,6 +114,7 @@ struct PagedCard<Content: View, Backdrop: View>: View {
                 .onTapGesture { pager.select(id, page: i) }
             }
           }
+          .padding(.bottom, Self.inset)
         }
       }
     }
@@ -108,5 +127,15 @@ struct PagedCard<Content: View, Backdrop: View>: View {
     )
     .onChange(of: count) { _, c in pager.setCount(id, count: c) }
     .onDisappear { pager.unregister(id) }
+  }
+
+  /// WidgetCard's content padding.
+  private static var inset: CGFloat { 18 }
+
+  private static func slide(_ direction: Int) -> AnyTransition {
+    .asymmetric(
+      insertion: .move(edge: direction > 0 ? .trailing : .leading),
+      removal: .move(edge: direction > 0 ? .leading : .trailing)
+    )
   }
 }
