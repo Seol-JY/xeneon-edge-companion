@@ -111,7 +111,7 @@ private struct MediaPlayerView: NSViewRepresentable {
 
 /// Layer-backed player. Video plays muted with hardware decoding and rewinds at its end; animated
 /// images become a Core Animation keyframe animation, which the render server plays without waking
-/// the app. Everything pauses while the dashboard is hidden.
+/// the app. Everything pauses while the dashboard is hidden, and a tap pauses or resumes it.
 final class MediaPlayerNSView: NSView {
   private var current: (url: URL, fill: Bool)?
   private var player: AVPlayer?
@@ -120,6 +120,8 @@ final class MediaPlayerNSView: NSView {
   private let imageLayer = CALayer()
   private var animation: CAKeyframeAnimation?
   private var observer: NSObjectProtocol?
+  /// Paused by a tap; held across the dashboard hiding and showing again.
+  private var userPaused = false
 
   override init(frame: NSRect) {
     super.init(frame: frame)
@@ -138,6 +140,14 @@ final class MediaPlayerNSView: NSView {
 
   deinit {
     if let observer { NotificationCenter.default.removeObserver(observer) }
+  }
+
+  // The Edge panel is never the key window, so the first click has to count.
+  override func acceptsFirstMouse(for event: NSEvent?) -> Bool { true }
+
+  override func mouseDown(with event: NSEvent) {
+    userPaused.toggle()
+    applySuspension()
   }
 
   override func layout() {
@@ -177,6 +187,9 @@ final class MediaPlayerNSView: NSView {
     imageLayer.contents = nil
     animation = nil
     current = nil
+    userPaused = false
+    imageLayer.speed = 1
+    imageLayer.timeOffset = 0
   }
 
   private func setGravity(_ fill: Bool) {
@@ -227,11 +240,28 @@ final class MediaPlayerNSView: NSView {
   private func applySuspension() {
     let suspended = TelemetryHub.shared.isSuspended
     if let player {
-      if suspended { player.pause() } else { player.play() }
+      if suspended || userPaused { player.pause() } else { player.play() }
     }
     if let animation {
       if suspended { imageLayer.removeAnimation(forKey: "frames") }
       else if imageLayer.animation(forKey: "frames") == nil { imageLayer.add(animation, forKey: "frames") }
+      setAnimationPaused(userPaused)
+    }
+  }
+
+  /// Freezes the animation on its current frame by stopping the layer's clock, and restarts the
+  /// clock from there.
+  private func setAnimationPaused(_ paused: Bool) {
+    if paused, imageLayer.speed != 0 {
+      let now = imageLayer.convertTime(CACurrentMediaTime(), from: nil)
+      imageLayer.speed = 0
+      imageLayer.timeOffset = now
+    } else if !paused, imageLayer.speed == 0 {
+      let pausedAt = imageLayer.timeOffset
+      imageLayer.speed = 1
+      imageLayer.timeOffset = 0
+      imageLayer.beginTime = 0
+      imageLayer.beginTime = imageLayer.convertTime(CACurrentMediaTime(), from: nil) - pausedAt
     }
   }
 
