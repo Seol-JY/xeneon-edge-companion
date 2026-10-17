@@ -50,13 +50,19 @@ final class PanelEventSink {
 
   // MARK: - Helpers
 
-  /// A mostly horizontal swipe outside the terminal turns the dashboard page.
+  /// A mostly horizontal swipe outside the terminal turns the dashboard page; an upward one is
+  /// offered to the widget it started on.
   private func detectPageSwipe(in window: NSWindow) {
     let (dx, dy) = scrollTravel
-    guard abs(dx) > 90, abs(dx) > abs(dy) * 1.5, !isInsideFocusable(scrollTarget) else { return }
+    guard !isInsideFocusable(scrollTarget) else { return }
     // SwiftUI's global space in the hosting view has a top-left origin.
     let w = windowPoint(scrollStart, in: window)
     let height = window.contentView?.bounds.height ?? window.frame.height
+    if dy < -70, abs(dy) > abs(dx) * 1.5 {
+      NotificationCenter.default.post(name: .edgeDashboardSwipeUp, object: CGPoint(x: w.x, y: height - w.y))
+      return
+    }
+    guard abs(dx) > 90, abs(dx) > abs(dy) * 1.5 else { return }
     // Finger moving left reveals the next page, like a phone home screen.
     NotificationCenter.default.post(name: .edgeDashboardSwipe, object: DashboardSwipe(step: dx < 0 ? 1 : -1, start: CGPoint(x: w.x, y: height - w.y)))
   }

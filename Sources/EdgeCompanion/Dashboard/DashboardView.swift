@@ -4,6 +4,8 @@ import SwiftUI
 extension Notification.Name {
   /// Posted with a `DashboardSwipe` when a horizontal swipe lands on the dashboard.
   static let edgeDashboardSwipe = Notification.Name("EdgeDashboardSwipe")
+  /// Posted with the start point (dashboard top-left coordinates) of an upward swipe.
+  static let edgeDashboardSwipeUp = Notification.Name("EdgeDashboardSwipeUp")
 }
 
 struct DashboardSwipe {
@@ -149,6 +151,7 @@ struct WidgetHost: View {
     case .aiUsage: UsageWidget()
     case .timer: TimerWidget()
     case .volume: VolumeWidget(id: slot.id)
+    case .sleep: SleepWidget()
     case .web: WebWidget()
     case .media: MediaWidget(slotID: slot.id)
     case .spacer: Color.clear

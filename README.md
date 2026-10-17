@@ -31,6 +31,8 @@ dashboard. It is an unofficial project and not affiliated with Corsair.
 - A web page widget showing any address you set, with logins kept between launches.
 - Photo and video widgets (as many as you like): a photo, GIF or video filling the card on an
   endless loop, muted and paused while the Edge is off.
+- A sleep widget: keeps the Mac and its displays awake for 1, 4, 8 or 24 hours (like
+  `caffeinate -d`), and swiping up on it then tapping puts the Mac to sleep.
 - Widgets in 1×1, 2×1, 1×2 and 2×2 sizes, several dashboard pages, widgets with their own pages,
   and a layout editor in Settings.
 - Panel white balance over DDC/CI. The values are stored in the panel, so they stay after the

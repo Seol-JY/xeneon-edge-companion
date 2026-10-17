@@ -356,6 +356,7 @@ extension WidgetKind {
     case .aiUsage: return tr("AI 사용량", "AI usage")
     case .timer: return tr("타이머", "Timer")
     case .volume: return tr("볼륨", "Volume")
+    case .sleep: return tr("잠자기", "Sleep")
     case .web: return tr("웹페이지", "Web page")
     case .media: return tr("사진·영상", "Photo & video")
     case .spacer: return tr("빈 공간", "Empty space")

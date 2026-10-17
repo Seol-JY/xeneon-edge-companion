@@ -260,6 +260,7 @@ extension WidgetKind {
     case .aiUsage: return "sparkle"
     case .timer: return "timer"
     case .volume: return "speaker.wave.2.fill"
+    case .sleep: return "moon.fill"
     case .web: return "globe"
     case .media: return "photo.on.rectangle.angled"
     case .spacer: return "square.dashed"

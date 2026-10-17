@@ -3,7 +3,7 @@ import EdgeCore
 import SwiftUI
 
 /// Diagnostic: renders widgets to PNG files without touching the dashboard layout.
-///   EdgeCompanion --render-widgets <folder> [kind ...] [--cell 492x339] [--music-demo [artwork]]
+///   EdgeCompanion --render-widgets <folder> [kind ...] [--cell 492x339] [--music-demo [artwork]] [--awake-demo [minutes]]
 /// `--music-demo` fills in a playing track so the clock renders its Apple Music page.
 @MainActor
 enum WidgetRenderer {
@@ -27,6 +27,10 @@ enum WidgetRenderer {
       MusicController.shared.preview(title: "Midnight City", artist: "M83", album: "Hurry Up, We're Dreaming",
                                      duration: 243, position: 88, artwork: path.flatMap { NSImage(contentsOfFile: $0) },
                                      paused: arguments[m] == "--music-demo-paused")
+    }
+    if let a = arguments.firstIndex(of: "--awake-demo") {
+      let minutes = arguments.count > a + 1 ? Int(arguments[a + 1]) ?? 60 : 60
+      AwakeModel.shared.preview(minutes: minutes, left: 47 * 60 + 12)
     }
     let kinds = requested.isEmpty ? [WidgetKind.timer, .volume] : Array(requested)
 

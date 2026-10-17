@@ -19,6 +19,8 @@ enum TerminalSide: String, Codable, CaseIterable {
 enum WidgetKind: String, Codable, CaseIterable, Identifiable {
   /// `network` also pages to disk activity; `system` pages to top processes.
   case clock, cpu, gpu, memory, network, sensors, battery, launcher, system, aiUsage, timer, volume
+  /// Keep-awake durations and a sleep button.
+  case sleep
   /// A web page (address in `AppSettings.webURL`).
   case web
   /// A photo, GIF or video on loop (file in `AppSettings.mediaItems`); any number may be placed.
