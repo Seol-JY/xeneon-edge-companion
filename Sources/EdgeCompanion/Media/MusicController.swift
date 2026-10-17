@@ -508,21 +508,4 @@ final class MusicController: ObservableObject {
     guard s > 0.15 else { return Color(white: 0.92) }
     return Color(nsColor: NSColor(hue: h, saturation: min(max(s, 0.45), 0.75), brightness: max(v, 0.9), alpha: 1))
   }
-
-  // MARK: Preview
-
-  /// Fills in a track for `--render-widgets` so the player can be checked without Music.
-  func preview(title: String, artist: String, album: String, duration: TimeInterval, position: TimeInterval, artwork image: NSImage?, paused: Bool = false) {
-    started = true
-    state = paused ? .paused : .playing
-    track = Track(title: title, artist: artist, album: album, duration: duration)
-    self.position = position
-    positionDate = Date()
-    featured = true
-    if let image, let cg = image.cgImage(forProposedRect: nil, context: nil, hints: nil) {
-      artwork = image
-      backdrop = Self.makeBackdrop(cg)
-      accent = Self.accentColor(cg)
-    }
-  }
 }

@@ -59,12 +59,6 @@ final class AwakeModel: ObservableObject {
     p.arguments = ["sleepnow"]
     do { try p.run() } catch { Log.info(.dashboard, "sleep failed: \(error.localizedDescription)") }
   }
-
-  /// Turns it on without the assertion, for `--render-widgets`.
-  func preview(minutes choice: Int, left: TimeInterval) {
-    minutes = choice
-    endDate = Date().addingTimeInterval(left)
-  }
 }
 
 /// Laid out like the timer: one large line over the duration buttons. Off, the line just reads

@@ -57,8 +57,6 @@ final class DiscordController: ObservableObject {
   private var subscribedChannel: String?
   private var authorizeRequested = false
   private var observers: [NSObjectProtocol] = []
-  /// Set by `preview`, so the widget appearing doesn't replace the demo state with the real one.
-  private var previewing = false
 
   private static let scopes = ["rpc", "rpc.voice.read", "rpc.voice.write"]
   /// Discord insists on a registered redirect URI even though nothing is redirected.
@@ -81,7 +79,7 @@ final class DiscordController: ObservableObject {
   /// The widget holds this while it is on screen; polling and the RPC link only run meanwhile.
   func retain() {
     users += 1
-    guard users == 1, !previewing else { return }
+    guard users == 1 else { return }
     refreshRunning()
     refreshAudio()
     let t = Timer(timeInterval: 2, repeats: true) { [weak self] _ in self?.refreshAudio() }
@@ -443,24 +441,5 @@ final class DiscordController: ObservableObject {
       guard let data = try? JSONEncoder().encode(self) else { return }
       DiscordKeychain.set(String(data: data, encoding: .utf8), for: "token")
     }
-  }
-
-  // MARK: Preview
-
-  /// Fills in a state for `--render-widgets`: off, idle, basic (on a call, not linked) or call.
-  func preview(_ state: String) {
-    previewing = true
-    running = state != "off"
-    micInUse = state == "basic" || state == "call"
-    callStart = micInUse ? Date().addingTimeInterval(-754) : nil
-    guard state == "call" else { return }
-    link = .ready(user: "seol")
-    selfMute = false
-    selfDeaf = false
-    let names = ["seol", "민지", "Hanni", "다니엘", "haerin", "혜인", "bunny"]
-    call = Call(channelID: "1", name: "일반", guildName: "친구들", members: names.enumerated().map { i, n in
-      Member(id: "\(i)", name: n, avatar: nil, muted: i == 3, deafened: i == 5)
-    })
-    speaking = ["1", "4"]
   }
 }
