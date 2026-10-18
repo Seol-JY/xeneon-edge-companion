@@ -310,6 +310,16 @@ private struct DashboardTab: View {
       UsageSection()
       WebPageSection(store: store)
       DiscordSection(store: store)
+      Section(tr("알림", "Notifications")) {
+        Toggle(tr("Mac 알림을 Edge에 띄우기", "Show Mac notifications on the Edge"), isOn: $store.settings.notificationsEnabled)
+        Text(tr("알림 배너가 뜨면 이를 인식해 표시해요. Mac의 설정에 따라 실제로 Mac에 배너가 뜨는 경우에만 연동돼요.",
+                "When a notification banner appears, it is shown on the Edge too. Only banners macOS actually shows are picked up, following your Mac's notification settings."))
+          .font(.caption).foregroundStyle(.secondary)
+        if store.settings.notificationsEnabled, !Permissions.canPostEvents {
+          Text(tr("손쉬운 사용 권한이 필요해요. 일반 탭에서 허용해 주세요.", "Needs Accessibility; allow it on the General tab."))
+            .font(.caption).foregroundStyle(.orange)
+        }
+      }
       Section(tr("런처", "Launcher")) {
         ForEach(store.settings.launcherItems) { item in
           HStack {

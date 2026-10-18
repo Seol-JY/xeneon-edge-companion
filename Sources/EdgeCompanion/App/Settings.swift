@@ -165,6 +165,8 @@ struct AppSettings: Codable, Equatable {
   var webZoom = 1.0
   /// The user's own Discord application for the RPC link; its secret is in the keychain.
   var discordClientID = ""
+  /// Show each Mac notification banner across the dashboard for a moment.
+  var notificationsEnabled = false
   /// Media widget files by slot id (uuidString).
   var mediaItems: [String: MediaItem] = [:]
 
@@ -214,6 +216,7 @@ struct AppSettings: Codable, Equatable {
     webURL = v(.webURL, webURL)
     webZoom = v(.webZoom, webZoom)
     discordClientID = v(.discordClientID, discordClientID)
+    notificationsEnabled = v(.notificationsEnabled, notificationsEnabled)
     mediaItems = v(.mediaItems, mediaItems)
     profiles = v(.profiles, profiles)
   }

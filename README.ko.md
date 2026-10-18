@@ -35,6 +35,7 @@ macOS용 iCUE는 XENEON EDGE를 지원하지 않습니다. 터치가 다른 화�
   위젯을 위로 밀고 한 번 더 탭하면 맥을 잠재웁니다.
 - Discord 위젯은 설정 없이도 통화 중인지 보여 줍니다. 내 Discord 앱을
   연결하면 채널, 참여자, 말하는 사람까지 보여 주고 Discord 음소거, 헤드셋 음소거, 나가기를 다룹니다.
+- Mac 알림을 Edge에 띄웁니다(선택). 알림 배너가 뜨면 대시보드를 흐리게 하고 2초쯤 크게 보여 줍니다.
 - 위젯 크기는 1×1, 2×1, 1×2, 2×2입니다. 대시보드 페이지를 여러 개 만들 수 있고, 위젯 안에도
   페이지가 있습니다. 배치는 설정의 편집기에서 바꿉니다.
 - DDC/CI로 패널의 화이트 밸런스를 설정합니다. 값이 패널에 저장되므로 앱을 종료해도 유지됩니다.
@@ -108,6 +109,8 @@ macOS는 개인정보 권한을 코드 서명에 연결합니다. 로컬 인증�
   따릅니다. Discord는 음성 정보를 앱의 테스터에게만 열어 주기 때문에, 각자 개발자 페이지에서 앱을
   만들고 OAuth2 Redirects에 `http://localhost`를 추가한 다음, Client ID와 Client Secret을 붙여 넣고
   Discord 앱에서 승인해야 합니다.
+- Edge 알림: 설정 → 대시보드 → 알림에서 켭니다. 실제로 Mac에 뜬 배너만 인식하므로 집중 모드,
+  배너를 끈 앱, "미리보기 표시" 설정이 Mac과 똑같이 적용됩니다.
 - tmux가 설치되어 있으면 터미널이 별도 tmux 서버에서 실행되어 앱을 다시 시작해도 유지됩니다. 다른
   터미널에서는 `tmux -L edge attach -t edge`로 접속합니다.
 
@@ -139,6 +142,8 @@ Anthropic 약관은 Claude 구독의 OAuth 토큰을 다른 앱에서 쓰는 것
   토큰을 받고, 프로필 사진을 Discord CDN에서 불러옵니다.
 - Discord 정보는 데스크톱 앱의 로컬 RPC 소켓으로 읽고, Client Secret과 토큰은 로그인 키체인에
   저장합니다. 연결하지 않으면 Core Audio에서 어떤 앱이 마이크를 쓰는지만 확인합니다.
+- 알림 배너는 손쉬운 사용 권한으로 화면에 보이는 내용만 읽습니다. 읽은 내용은 이 Mac 밖으로
+  나가지 않습니다.
 - Apple Music 정보는 Music 앱의 알림과 AppleScript로 읽습니다. macOS가 처음 한 번 자동화 권한을
   묻습니다.
 - Claude Code를 연결하면 `~/.claude/settings.json` 옆에 시각이 붙은 백업을 만든 뒤 파일을 다시
@@ -190,7 +195,8 @@ scripts/test.sh                                   # 단위 테스트
 [DockAnchor](https://github.com/bwya77/DockAnchor), [SwiftTerm](https://github.com/migueldeicaza/SwiftTerm)에서
 가져왔습니다. 터치 프로토콜 정보는 커뮤니티의 XENEON EDGE 드라이버 프로젝트들을 참고했습니다. 터미널
 글꼴은 [Nerd Fonts](https://github.com/ryanoasis/nerd-fonts) 아이콘이 추가된
-[JetBrains Mono](https://github.com/JetBrains/JetBrainsMono)입니다.
+[JetBrains Mono](https://github.com/JetBrains/JetBrainsMono)이고, 대시보드 글꼴은
+[Pretendard](https://github.com/orioncactus/pretendard)입니다.
 [THIRD_PARTY_NOTICES.md](THIRD_PARTY_NOTICES.md)에 정리되어 있습니다.
 
 ## 피드백

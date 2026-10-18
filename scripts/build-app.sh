@@ -38,6 +38,9 @@ cat > "$APP/Contents/Info.plist" <<EOF
   <key>CFBundleVersion</key><string>$BUILD</string>
   <key>CFBundleIconFile</key><string>AppIcon</string>
   <key>LSMinimumSystemVersion</key><string>14.0</string>
+  <!-- Lets other apps' names resolve in the user's language (notification banners name their app). -->
+  <key>CFBundleAllowMixedLocalizations</key><true/>
+  <key>CFBundleLocalizations</key><array><string>en</string><string>ko</string></array>
   <key>LSUIElement</key><true/>
   <key>ATSApplicationFontsPath</key><string>Fonts</string>
   <key>NSHighResolutionCapable</key><true/>

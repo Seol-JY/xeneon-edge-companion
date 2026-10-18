@@ -36,6 +36,7 @@ struct DashboardView: View {
       .padding(Theme.padding)
       .frame(width: geo.size.width, height: geo.size.height)
     }
+    .overlay { NotificationOverlay() }
     .background(Theme.background)
     .preferredColorScheme(.dark)
     .onAppear { terminal.configure(fontSize: s.terminalFontSize, useTmux: s.terminalUseTmux) }

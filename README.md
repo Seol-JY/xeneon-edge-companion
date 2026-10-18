@@ -36,6 +36,8 @@ dashboard. It is an unofficial project and not affiliated with Corsair.
 - A Discord widget: shows when you're on a call with no setup.
   Linked to your own Discord application, it also shows the channel, who is in it and speaking,
   and controls Discord's mute, deafen and leave.
+- Mac notifications on the Edge (optional): when a notification banner appears, the dashboard
+  blurs and shows it large for about two seconds.
 - Widgets in 1×1, 2×1, 1×2 and 2×2 sizes, several dashboard pages, widgets with their own pages,
   and a layout editor in Settings.
 - Panel white balance over DDC/CI. The values are stored in the panel, so they stay after the
@@ -110,6 +112,9 @@ display mode, applies color presets and opens Settings.
   Discord only opens voice data to an application's own testers, so each user creates an
   application on the developer portal, adds `http://localhost` to its OAuth2 redirects, pastes its
   Client ID and Client Secret, and approves the prompt in Discord.
+- Notifications on the Edge: turn on Settings → Dashboard → Notifications. Only banners macOS
+  actually shows are picked up, so Focus, apps with banners off and the "Show previews" setting
+  all apply as they do on the Mac.
 - If tmux is installed, the terminal runs in its own tmux server and keeps running when the app
   restarts. Attach from another terminal with `tmux -L edge attach -t edge`.
 
@@ -145,6 +150,8 @@ MonitorControl.
 - Discord is read over the desktop client's local RPC socket; the Client Secret and tokens are
   kept in the login keychain. Without a link, only Core Audio's list of which apps use the
   microphone is checked.
+- Notification banners are read with the Accessibility permission, only as they appear on screen.
+  Their contents stay on this Mac.
 - Apple Music is read through its own notifications and AppleScript; macOS asks once for
   Automation permission.
 - Connecting Claude Code rewrites `~/.claude/settings.json` after saving a timestamped backup next
@@ -199,7 +206,8 @@ Parts of the code and approach come from [exelban/stats](https://github.com/exel
 [SwiftTerm](https://github.com/migueldeicaza/SwiftTerm). The touch protocol details come from the
 community XENEON EDGE driver projects. The terminal font is
 [JetBrains Mono](https://github.com/JetBrains/JetBrainsMono) with
-[Nerd Fonts](https://github.com/ryanoasis/nerd-fonts) icons. See
+[Nerd Fonts](https://github.com/ryanoasis/nerd-fonts) icons, and dashboard text is set in
+[Pretendard](https://github.com/orioncactus/pretendard). See
 [THIRD_PARTY_NOTICES.md](THIRD_PARTY_NOTICES.md).
 
 ## Feedback

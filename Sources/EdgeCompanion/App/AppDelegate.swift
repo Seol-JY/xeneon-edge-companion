@@ -95,6 +95,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
     TerminalSession.shared.configure(fontSize: s.terminalFontSize, useTmux: s.terminalUseTmux)
     settingsWindow?.title = tr("EdgeCompanion 설정", "EdgeCompanion Settings")
     reconfigureInputGuards()
+    BannerWatcher.shared.setEnabled(s.notificationsEnabled && s.dashboardEnabled && Permissions.canPostEvents)
   }
 
   /// The fence and the evictor only make sense while the dashboard owns the Edge; the Dock lock applies always.
@@ -139,6 +140,8 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
       Log.info(.app, "permissions: inputMonitoring=\(listen) accessibility=\(post)")
       touch.permissionsChanged()
       reconfigureInputGuards()
+      let s = store.settings
+      BannerWatcher.shared.setEnabled(s.notificationsEnabled && s.dashboardEnabled && post)
     }
     if listen, post {
       permissionTimer?.invalidate()
