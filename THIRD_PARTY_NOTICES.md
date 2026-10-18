@@ -18,11 +18,12 @@ notice when distributing a built app):
 |---|---|
 | [migueldeicaza/SwiftTerm](https://github.com/migueldeicaza/SwiftTerm) | The dashboard terminal |
 
-Bundled font (in `Resources/Fonts`, shipped inside the app):
+Bundled fonts (in `Resources/Fonts`, shipped inside the app):
 
 | Font | License | Files |
 |---|---|---|
 | [JetBrains Mono](https://github.com/JetBrains/JetBrainsMono), patched by [Nerd Fonts](https://github.com/ryanoasis/nerd-fonts) v3.5.1 ("JetBrainsMono Nerd Font Mono") | SIL Open Font License 1.1 (`Resources/Fonts/OFL.txt`). The added icon sets keep their own licenses, listed in `Resources/Fonts/NerdFonts-JetBrainsMono-README.md` | `JetBrainsMonoNerdFontMono-Regular.ttf`, `JetBrainsMonoNerdFontMono-Bold.ttf` |
+| [Pretendard](https://github.com/orioncactus/pretendard) v1.3.9 | SIL Open Font License 1.1 (`Resources/Fonts/Pretendard-OFL.txt`) | `Pretendard-Regular.otf`, `Pretendard-Medium.otf`, `Pretendard-SemiBold.otf`, `Pretendard-Bold.otf` |
 
 Hardware facts (DDC feature codes, the touch controller's report layout, gain scales) were learned
 from several other projects, including GPL-licensed ones. No code from those projects is included.

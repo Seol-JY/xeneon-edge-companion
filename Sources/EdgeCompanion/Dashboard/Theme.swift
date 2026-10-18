@@ -31,9 +31,15 @@ enum Theme {
     .system(size: size, weight: weight, design: .rounded).monospacedDigit()
   }
 
-  /// Labels and other text.
+  /// Labels and other text, in the bundled Pretendard (Resources/Fonts) for Latin and Hangul alike.
   static func text(_ size: CGFloat, weight: Font.Weight = .regular) -> Font {
-    .system(size: size, weight: weight)
+    let face = switch weight {
+    case .bold, .heavy, .black: "Bold"
+    case .semibold: "SemiBold"
+    case .medium: "Medium"
+    default: "Regular"
+    }
+    return .custom("Pretendard-\(face)", fixedSize: size)
   }
 }
 
