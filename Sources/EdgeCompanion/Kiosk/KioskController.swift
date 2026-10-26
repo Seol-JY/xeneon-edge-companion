@@ -1,7 +1,9 @@
 import AppKit
+import EdgeCore
 import SwiftUI
 
-/// A borderless panel that owns the whole Edge, including the strip where the menu bar would be.
+/// A borderless panel that owns the whole Edge (or, in split mode, one end of it), including the
+/// strip where the menu bar would be.
 ///
 /// It sits one level above the status bar, joins every Space, and never activates the app, so
 /// touching it does not take focus from the main display. It can become key only so the terminal
@@ -17,6 +19,12 @@ final class FirstMouseHostingView<Content: View>: NSHostingView<Content> {
 }
 
 final class KioskController: ObservableObject {
+  /// Split mode: the dashboard covers `length` points at one end of the Edge.
+  struct Split: Equatable {
+    var side: SplitSide
+    var length: Double
+  }
+
   @Published private(set) var isVisible = false
 
   /// Fires when the panel's visibility to the user changes (shown/hidden/occluded).
@@ -26,6 +34,7 @@ final class KioskController: ObservableObject {
   private let makeContent: () -> AnyView
   private var display: EdgeDisplay?
   private var enabled = false
+  private var split: Split?
   private var observers: [NSObjectProtocol] = []
   private var watchdog: Timer?
 
@@ -33,15 +42,29 @@ final class KioskController: ObservableObject {
     makeContent = content
   }
 
-  func update(state: DisplayMonitor.State, enabled: Bool) {
+  func update(state: DisplayMonitor.State, enabled: Bool, split: Split?) {
     self.enabled = enabled
+    self.split = split
     display = state.display
     refresh()
   }
 
+  /// The part of the Edge the panel covers, in global Quartz points; nil while hidden.
+  var coveredBounds: CGRect? {
+    guard isVisible, let display else { return nil }
+    guard let split else { return display.bounds }
+    return SplitLayout.dashboardRect(in: display.bounds, side: split.side, length: split.length)
+  }
+
+  /// The panel's frame in AppKit coordinates.
+  private func panelFrame(on screen: NSScreen) -> NSRect {
+    guard let split else { return screen.frame }
+    return SplitLayout.dashboardRect(in: screen.frame, side: split.side, length: split.length, yDown: false)
+  }
+
   /// Global-point hit test used by the touch router (main thread).
   func panelForTouch(at p: CGPoint) -> NSWindow? {
-    guard isVisible, let panel, let display, display.bounds.contains(p) else { return nil }
+    guard let panel, let covered = coveredBounds, covered.contains(p) else { return nil }
     // Something above us (a menu, an alert) at this point gets the touch instead.
     if let above = CGWindowListCopyWindowInfo([.optionOnScreenAboveWindow], CGWindowID(panel.windowNumber)) as? [[String: Any]] {
       for info in above {
@@ -62,8 +85,9 @@ final class KioskController: ObservableObject {
       return
     }
     let panel = self.panel ?? makePanel()
-    if panel.frame != screen.frame {
-      panel.setFrame(screen.frame, display: true)
+    let frame = panelFrame(on: screen)
+    if panel.frame != frame {
+      panel.setFrame(frame, display: true)
     }
     if !panel.isVisible { Log.info(.kiosk, "showing on \(display.summary)") }
     panel.orderFrontRegardless()
@@ -140,8 +164,8 @@ final class KioskController: ObservableObject {
 
   private func reassertFront() {
     guard isVisible, let panel else { return }
-    if let screen = display?.screen, panel.frame != screen.frame {
-      panel.setFrame(screen.frame, display: true)
+    if let screen = display?.screen, panel.frame != panelFrame(on: screen) {
+      panel.setFrame(panelFrame(on: screen), display: true)
     }
     panel.orderFrontRegardless()
   }

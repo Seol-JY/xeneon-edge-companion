@@ -1,5 +1,6 @@
 import AppKit
 import Combine
+import EdgeCore
 import ServiceManagement
 import SwiftUI
 
@@ -60,7 +61,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
 
   func applicationWillTerminate(_ notification: Notification) {
     touch.setEnabled(false)
-    pointerGuard.configure(edgeBounds: nil, fenceEnabled: false, allowOptionEntry: false, dockLock: false)
+    pointerGuard.configure(edgeBounds: nil, fence: nil, allowOptionEntry: false, dockLock: false)
     monitor.stop()
   }
 
@@ -81,7 +82,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
     if state.isActive { pointerGuard.checkDock(after: 3) }
     let calibration = state.display.map { store.profile(for: $0.profileKey).touchCalibration } ?? .identity
     touch.edgeChanged(state, calibration: calibration)
-    kiosk.update(state: state, enabled: s.dashboardEnabled)
+    kiosk.update(state: state, enabled: s.dashboardEnabled, split: Self.split(s))
     reconfigureInputGuards()
     updateSuspension()
   }
@@ -91,20 +92,38 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
     if let d = monitor.state.display {
       touch.edgeChanged(monitor.state, calibration: store.profile(for: d.profileKey).touchCalibration)
     }
-    kiosk.update(state: monitor.state, enabled: s.dashboardEnabled)
+    kiosk.update(state: monitor.state, enabled: s.dashboardEnabled, split: Self.split(s))
     TerminalSession.shared.configure(fontSize: s.terminalFontSize, useTmux: s.terminalUseTmux)
     settingsWindow?.title = tr("EdgeCompanion 설정", "EdgeCompanion Settings")
     reconfigureInputGuards()
     BannerWatcher.shared.setEnabled(s.notificationsEnabled && s.dashboardEnabled && Permissions.canPostEvents)
   }
 
-  /// The fence and the evictor only make sense while the dashboard owns the Edge; the Dock lock applies always.
+  private static func split(_ s: AppSettings) -> KioskController.Split? {
+    s.splitEnabled ? KioskController.Split(side: s.splitSide, length: s.splitLength) : nil
+  }
+
+  /// The fence and the evictor only make sense while the dashboard is showing, and cover only its
+  /// part of the Edge; the Dock lock applies always.
   private func reconfigureInputGuards() {
     let s = store.settings
-    let bounds = monitor.state.display?.bounds
-    let owning = kiosk.isVisible
-    pointerGuard.configure(edgeBounds: bounds, fenceEnabled: s.mouseFenceEnabled && owning, allowOptionEntry: s.fenceBypassWithOption, dockLock: s.dockLockEnabled)
-    evictor.configure(edgeBounds: bounds, active: s.evictWindows && owning)
+    let display = monitor.state.display
+    let covered = kiosk.coveredBounds
+    pointerGuard.configure(edgeBounds: display?.bounds, fence: s.mouseFenceEnabled ? covered : nil, allowOptionEntry: s.fenceBypassWithOption, dockLock: s.dockLockEnabled)
+    evictor.configure(covered: s.evictWindows ? covered : nil, edgeBounds: display?.bounds, freeArea: display.flatMap { freeArea(on: $0, s) })
+  }
+
+  /// Split mode: the Edge's regular part below its menu bar, in global Quartz points.
+  private func freeArea(on display: EdgeDisplay, _ s: AppSettings) -> CGRect? {
+    guard let split = Self.split(s) else { return nil }
+    let free = SplitLayout.freeRect(in: display.bounds, side: split.side, length: split.length)
+    guard let screen = display.screen else { return free }
+    // visibleFrame is in AppKit coordinates; flip it into Quartz ones.
+    let primaryHeight = NSScreen.screens.first { $0.frame.origin == .zero }?.frame.height ?? screen.frame.maxY
+    let v = screen.visibleFrame
+    let visible = CGRect(x: v.minX, y: primaryHeight - v.maxY, width: v.width, height: v.height)
+    let area = free.intersection(visible)
+    return area.isNull || area.width < 100 || area.height < 100 ? free : area
   }
 
   private func updateSuspension() {

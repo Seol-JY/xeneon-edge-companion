@@ -139,6 +139,11 @@ struct AppSettings: Codable, Equatable {
 
   // Edge as a dedicated surface
   var dashboardEnabled = true
+  /// The dashboard covers only one end of the Edge; the rest stays a regular display.
+  var splitEnabled = false
+  var splitSide: SplitSide = .right
+  /// Dashboard length along the Edge's long side in split mode, in points.
+  var splitLength = 1280.0
   var mouseFenceEnabled = true
   /// Entering the Edge with Option held lets the pointer roam it until it leaves.
   var fenceBypassWithOption = true
@@ -187,6 +192,9 @@ struct AppSettings: Codable, Equatable {
     momentumScrolling = v(.momentumScrolling, momentumScrolling)
     restoreCursorAfterTouch = v(.restoreCursorAfterTouch, restoreCursorAfterTouch)
     dashboardEnabled = v(.dashboardEnabled, dashboardEnabled)
+    splitEnabled = v(.splitEnabled, splitEnabled)
+    splitSide = v(.splitSide, splitSide)
+    splitLength = v(.splitLength, splitLength)
     mouseFenceEnabled = v(.mouseFenceEnabled, mouseFenceEnabled)
     fenceBypassWithOption = v(.fenceBypassWithOption, fenceBypassWithOption)
     dockLockEnabled = v(.dockLockEnabled, dockLockEnabled)
@@ -219,6 +227,21 @@ struct AppSettings: Codable, Equatable {
     notificationsEnabled = v(.notificationsEnabled, notificationsEnabled)
     mediaItems = v(.mediaItems, mediaItems)
     profiles = v(.profiles, profiles)
+  }
+}
+
+/// How the Edge is used: all dashboard, dashboard on one end with windows on the rest, or a regular display.
+enum EdgeMode: CaseIterable {
+  case dashboard, split, display
+}
+
+extension AppSettings {
+  var edgeMode: EdgeMode {
+    get { !dashboardEnabled ? .display : splitEnabled ? .split : .dashboard }
+    set {
+      dashboardEnabled = newValue != .display
+      if newValue != .display { splitEnabled = newValue == .split }
+    }
   }
 }
 

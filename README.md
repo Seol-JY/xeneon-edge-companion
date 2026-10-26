@@ -44,6 +44,9 @@ dashboard. It is an unofficial project and not affiliated with Corsair.
   app quits. The D65 preset corrects the bluish factory white.
 - In dashboard mode the mouse pointer can't enter the Edge (hold <kbd>Option</kbd> to let it in),
   the Dock stays off it, and other windows that end up there are moved to the main display.
+- Split mode: the dashboard takes one end of the Edge (left or right, width adjustable) and the
+  rest stays a regular display for app windows. The pointer guard covers only the dashboard, and
+  windows that reach under it slide back into the regular part.
 - The panel is recognized by its serial number; settings are applied again after reconnecting
   or waking from sleep.
 - Uses about 1–2% of one CPU core while the dashboard is visible, and stops sampling while the
@@ -94,8 +97,9 @@ Permissions requested on first launch:
 
 ## Usage
 
-The menu bar menu shows the Edge and touch status, switches between dashboard mode and regular
-display mode, applies color presets and opens Settings.
+The menu bar menu shows the Edge and touch status, switches between dashboard, split and regular
+display modes, applies color presets and opens Settings. The split side and width are in
+Settings → General.
 
 - Moving a finger scrolls. Holding briefly and then moving drags. Holding still right-clicks.
 - Swipe sideways on the dashboard to change pages. Widgets with dots at the bottom have their own

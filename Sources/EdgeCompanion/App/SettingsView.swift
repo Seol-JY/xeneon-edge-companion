@@ -46,21 +46,32 @@ private struct GeneralTab: View {
         }
       }
       Section {
-        Picker(tr("Edge 모드", "Edge mode"), selection: $store.settings.dashboardEnabled) {
-          Text(tr("대시보드", "Dashboard")).tag(true)
-          Text(tr("일반 모니터", "Regular display")).tag(false)
+        Picker(tr("Edge 모드", "Edge mode"), selection: $store.settings.edgeMode) {
+          Text(tr("대시보드", "Dashboard")).tag(EdgeMode.dashboard)
+          Text(tr("분할", "Split")).tag(EdgeMode.split)
+          Text(tr("일반 모니터", "Regular display")).tag(EdgeMode.display)
         }
         .pickerStyle(.segmented)
-        Text(store.settings.dashboardEnabled
-          ? tr("Edge를 대시보드 전용으로 써요.", "Uses the Edge as a dedicated dashboard.")
-          : tr("Edge를 일반 모니터로 써요.", "Uses the Edge as a regular display."))
+        Text(modeDescription)
           .font(.caption).foregroundStyle(.secondary)
+        if store.settings.edgeMode == .split {
+          Picker(tr("대시보드 위치", "Dashboard side"), selection: $store.settings.splitSide) {
+            Text(tr("왼쪽 (세로: 위)", "Left (portrait: top)")).tag(SplitSide.left)
+            Text(tr("오른쪽 (세로: 아래)", "Right (portrait: bottom)")).tag(SplitSide.right)
+          }
+          .pickerStyle(.segmented)
+          LabeledContent(tr("대시보드 너비", "Dashboard width")) {
+            Slider(value: $store.settings.splitLength, in: Double(SplitLayout.minimumLength) ... splitMax, step: 40).frame(width: 260)
+            Text("\(Int(min(store.settings.splitLength, splitMax))) pt").monospacedDigit().frame(width: 64)
+          }
+        }
         if store.settings.dashboardEnabled {
-          Toggle(tr("마우스 커서가 Edge로 못 들어가게", "Keep the mouse pointer off the Edge"), isOn: $store.settings.mouseFenceEnabled)
+          let split = store.settings.edgeMode == .split
+          Toggle(split ? tr("마우스 커서가 대시보드로 못 들어가게", "Keep the mouse pointer off the dashboard") : tr("마우스 커서가 Edge로 못 들어가게", "Keep the mouse pointer off the Edge"), isOn: $store.settings.mouseFenceEnabled)
           Toggle(tr("Option 키를 누른 채 들어가면 나올 때까지 자유롭게", "Entering with Option held lets the pointer roam until it leaves"), isOn: $store.settings.fenceBypassWithOption)
             .disabled(!store.settings.mouseFenceEnabled)
             .padding(.leading, 18)
-          Toggle(tr("Edge로 간 다른 앱 창을 메인 화면으로 옮기기", "Move other apps' windows off the Edge"), isOn: $store.settings.evictWindows)
+          Toggle(split ? tr("대시보드 아래로 간 창을 나머지 영역으로 옮기기", "Move windows out from under the dashboard") : tr("Edge로 간 다른 앱 창을 메인 화면으로 옮기기", "Move other apps' windows off the Edge"), isOn: $store.settings.evictWindows)
         }
       }
       Section {
@@ -88,6 +99,20 @@ private struct GeneralTab: View {
     }
     .formStyle(.grouped)
     .onAppear { launchAtLogin = app.launchAtLogin }
+  }
+
+  private var modeDescription: String {
+    switch store.settings.edgeMode {
+    case .dashboard: return tr("Edge를 대시보드 전용으로 써요.", "Uses the Edge as a dedicated dashboard.")
+    case .split: return tr("Edge 한쪽은 대시보드, 나머지는 일반 모니터로 써요.", "Dashboard on one end of the Edge, regular display on the rest.")
+    case .display: return tr("Edge를 일반 모니터로 써요.", "Uses the Edge as a regular display.")
+    }
+  }
+
+  /// The longest dashboard that still leaves a usable regular part.
+  private var splitMax: Double {
+    let long = model.edgeState.display.map { max($0.bounds.width, $0.bounds.height) } ?? 2560
+    return Double(max(long - SplitLayout.minimumLength, SplitLayout.minimumLength + 40))
   }
 
   private var edgeStatus: String {

@@ -269,3 +269,50 @@ import Testing
     #expect(GridLayout.pack([]).columnCount == 0)
   }
 }
+
+@Suite struct SplitLayoutTests {
+  let edge = CGRect(x: -2560, y: 1692, width: 2560, height: 720)
+
+  @Test func landscapeRightAndLeft() {
+    let right = SplitLayout.dashboardRect(in: edge, side: .right, length: 1000)
+    #expect(right == CGRect(x: -1000, y: 1692, width: 1000, height: 720))
+    #expect(SplitLayout.freeRect(in: edge, side: .right, length: 1000) == CGRect(x: -2560, y: 1692, width: 1560, height: 720))
+    let left = SplitLayout.dashboardRect(in: edge, side: .left, length: 1000)
+    #expect(left == CGRect(x: -2560, y: 1692, width: 1000, height: 720))
+    #expect(SplitLayout.freeRect(in: edge, side: .left, length: 1000) == CGRect(x: -1560, y: 1692, width: 1560, height: 720))
+  }
+
+  @Test func clampsLengthSoBothPartsStayUsable() {
+    #expect(SplitLayout.dashboardRect(in: edge, side: .left, length: 100).width == 480)
+    #expect(SplitLayout.dashboardRect(in: edge, side: .left, length: 5000).width == 2080)
+  }
+
+  @Test func portraitSplitsTopAndBottomInBothCoordinateSystems() {
+    let portrait = CGRect(x: 0, y: 0, width: 720, height: 2560)
+    // Quartz: y grows downward, so top is minY.
+    #expect(SplitLayout.dashboardRect(in: portrait, side: .left, length: 800) == CGRect(x: 0, y: 0, width: 720, height: 800))
+    #expect(SplitLayout.dashboardRect(in: portrait, side: .right, length: 800) == CGRect(x: 0, y: 1760, width: 720, height: 800))
+    // AppKit: y grows upward, so top is maxY.
+    #expect(SplitLayout.dashboardRect(in: portrait, side: .left, length: 800, yDown: false) == CGRect(x: 0, y: 1760, width: 720, height: 800))
+    #expect(SplitLayout.freeRect(in: portrait, side: .left, length: 800) == CGRect(x: 0, y: 800, width: 720, height: 1760))
+  }
+
+  @Test func fenceAroundSplitDashboardReturnsPointerToRegularPart() {
+    let main = CGRect(x: 0, y: 0, width: 2560, height: 1440)
+    let edge = CGRect(x: 0, y: 1440, width: 2560, height: 720)
+    let fence = SplitLayout.dashboardRect(in: edge, side: .right, length: 1000)
+    let p = PointerMath.fenceClamp(CGPoint(x: 1600, y: 1800), fenced: fence, lastOutside: nil, displays: [main, edge], fallback: main)
+    #expect(p == CGPoint(x: 1559, y: 1800))
+  }
+
+  @Test func fitMovesThenShrinks() {
+    let area = CGRect(x: 0, y: 30, width: 1500, height: 690)
+    // Reaching past the right edge: slides left, keeps its size.
+    #expect(SplitLayout.fit(CGRect(x: 1200, y: 100, width: 600, height: 400), into: area) == CGRect(x: 900, y: 100, width: 600, height: 400))
+    // Bigger than the area: shrinks to it.
+    #expect(SplitLayout.fit(CGRect(x: -10, y: 0, width: 2560, height: 720), into: area) == area)
+    // Already inside: unchanged.
+    let inside = CGRect(x: 10, y: 40, width: 100, height: 100)
+    #expect(SplitLayout.fit(inside, into: area) == inside)
+  }
+}

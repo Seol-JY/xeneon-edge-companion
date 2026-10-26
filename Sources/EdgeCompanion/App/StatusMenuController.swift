@@ -34,10 +34,14 @@ final class StatusMenuController: NSObject, NSMenuDelegate {
     menu.addItem(.separator())
 
     menu.addItem(info(tr("Edge 모드", "Edge mode")))
-    let dashboard = toggle(tr("대시보드", "Dashboard"), s.dashboardEnabled, #selector(selectDashboardMode))
+    let dashboard = toggle(tr("대시보드", "Dashboard"), s.edgeMode == .dashboard, #selector(selectDashboardMode))
     dashboard.indentationLevel = 1
     dashboard.toolTip = tr("Edge를 대시보드 전용으로 써요.", "Uses the Edge as a dedicated dashboard.")
     menu.addItem(dashboard)
+    let split = toggle(tr("분할", "Split"), s.edgeMode == .split, #selector(selectSplitMode))
+    split.indentationLevel = 1
+    split.toolTip = tr("Edge 한쪽은 대시보드, 나머지는 일반 모니터로 써요.", "Dashboard on one end of the Edge, regular display on the rest.")
+    menu.addItem(split)
     let monitor = toggle(tr("일반 모니터", "Regular display"), !s.dashboardEnabled, #selector(selectMonitorMode))
     monitor.indentationLevel = 1
     monitor.toolTip = tr("Edge를 일반 모니터로 써요.", "Uses the Edge as a regular display.")
@@ -123,8 +127,9 @@ final class StatusMenuController: NSObject, NSMenuDelegate {
 
   // MARK: - Actions
 
-  @objc private func selectDashboardMode() { app.store.settings.dashboardEnabled = true }
-  @objc private func selectMonitorMode() { app.store.settings.dashboardEnabled = false }
+  @objc private func selectDashboardMode() { app.store.settings.edgeMode = .dashboard }
+  @objc private func selectSplitMode() { app.store.settings.edgeMode = .split }
+  @objc private func selectMonitorMode() { app.store.settings.edgeMode = .display }
   @objc private func toggleTouch() { app.store.settings.touchEnabled.toggle() }
   @objc private func toggleLogin() { app.launchAtLogin.toggle() }
   @objc private func openSettings() { app.showSettings() }

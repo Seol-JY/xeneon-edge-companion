@@ -56,16 +56,30 @@ struct LayoutEditor: View {
     GeometryReader { geo in
       let s = store.settings
       let gap: CGFloat = 4
-      let terminalW = s.terminalEnabled ? geo.size.width * CGFloat(min(max(s.terminalWidth, 480), 2200) / 2560) : 0
-      let areaX: CGFloat = s.terminalEnabled && s.terminalSide == .left ? terminalW + gap : 0
-      let areaW = geo.size.width - (s.terminalEnabled ? terminalW + gap : 0)
+      // The preview spans the landscape Edge (2560 pt); in split mode the dashboard takes its share.
+      let edgeLength: CGFloat = 2560
+      let dashLength = s.edgeMode == .split ? SplitLayout.clampedLength(s.splitLength, in: CGRect(x: 0, y: 0, width: edgeLength, height: 720)) : edgeLength
+      let scale = geo.size.width / edgeLength
+      let dashW = dashLength * scale
+      let dashX: CGFloat = s.edgeMode == .split && s.splitSide == .right ? geo.size.width - dashW : 0
+      let showTerminal = s.terminalEnabled && dashLength >= DashboardView.minimumWidthForTerminal
+      let terminalW = showTerminal ? min(max(CGFloat(s.terminalWidth), 480), dashLength - 360) * scale : 0
+      let areaX: CGFloat = dashX + (showTerminal && s.terminalSide == .left ? terminalW + gap : 0)
+      let areaW = dashW - (showTerminal ? terminalW + gap : 0)
       ZStack(alignment: .topLeading) {
         RoundedRectangle(cornerRadius: 8).fill(Color.black.opacity(0.85))
-        if s.terminalEnabled {
+        if s.edgeMode == .split {
+          RoundedRectangle(cornerRadius: 5)
+            .strokeBorder(Color.white.opacity(0.25), style: StrokeStyle(lineWidth: 1, dash: [4, 3]))
+            .overlay(Label(tr("일반 모니터", "Regular display"), systemImage: "macwindow").font(.caption).foregroundStyle(.secondary))
+            .frame(width: geo.size.width - dashW - 6, height: geo.size.height - 6)
+            .offset(x: s.splitSide == .right ? 3 : dashW + 3, y: 3)
+        }
+        if showTerminal {
           RoundedRectangle(cornerRadius: 5).fill(Color.white.opacity(0.08))
             .overlay(Image(systemName: "terminal").foregroundStyle(.secondary))
             .frame(width: terminalW - 6, height: geo.size.height - 6)
-            .offset(x: s.terminalSide == .left ? 3 : geo.size.width - terminalW + 3, y: 3)
+            .offset(x: s.terminalSide == .left ? dashX + 3 : dashX + dashW - terminalW + 3, y: 3)
         }
         if let page {
           let layout = GridLayout.pack(page.slots.map(\.size))

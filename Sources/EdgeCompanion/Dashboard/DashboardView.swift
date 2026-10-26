@@ -28,10 +28,12 @@ struct DashboardView: View {
   var body: some View {
     let s = store.settings
     GeometryReader { geo in
+      // A narrow split dashboard has no room for the terminal next to the widgets.
+      let terminal = s.terminalEnabled && geo.size.width >= Self.minimumWidthForTerminal
       HStack(spacing: Theme.gap) {
-        if s.terminalEnabled, s.terminalSide == .left { terminalCard(s, total: geo.size.width) }
+        if terminal, s.terminalSide == .left { terminalCard(s, total: geo.size.width) }
         pages(s)
-        if s.terminalEnabled, s.terminalSide == .right { terminalCard(s, total: geo.size.width) }
+        if terminal, s.terminalSide == .right { terminalCard(s, total: geo.size.width) }
       }
       .padding(Theme.padding)
       .frame(width: geo.size.width, height: geo.size.height)
@@ -90,6 +92,9 @@ struct DashboardView: View {
     hideDots = work
     DispatchQueue.main.asyncAfter(deadline: .now() + 1.5, execute: work)
   }
+
+  /// The terminal's minimum width plus room for one column of widgets.
+  static let minimumWidthForTerminal: CGFloat = 840
 
   private func terminalCard(_ s: AppSettings, total: CGFloat) -> some View {
     TerminalCard(session: terminal)

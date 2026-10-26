@@ -1,17 +1,25 @@
 import AppKit
 import ApplicationServices
+import EdgeCore
 
-/// Moves other apps' windows off the Edge while the dashboard covers it, so nothing gets "lost"
-/// underneath. Uses the Accessibility API; checks cheaply on app activation and every few seconds.
+/// Moves other apps' windows out from under the dashboard, so nothing gets "lost" underneath.
+/// With the whole Edge covered they go to the main display; in split mode they are fitted into the
+/// Edge's regular part. Uses the Accessibility API; checks cheaply on app activation and every few seconds.
 final class WindowEvictor {
+  private var covered: CGRect?
   private var edgeBounds: CGRect?
+  /// Split mode: where windows on the Edge may stay (global Quartz points).
+  private var freeArea: CGRect?
   private var timer: Timer?
   private var observer: NSObjectProtocol?
   private let ownPID = ProcessInfo.processInfo.processIdentifier
 
-  func configure(edgeBounds: CGRect?, active: Bool) {
-    self.edgeBounds = active ? edgeBounds : nil
-    if self.edgeBounds != nil { start() } else { stop() }
+  /// `covered` is the dashboard's area (nil: off); `freeArea` is set only in split mode.
+  func configure(covered: CGRect?, edgeBounds: CGRect?, freeArea: CGRect?) {
+    self.covered = edgeBounds == nil ? nil : covered
+    self.edgeBounds = edgeBounds
+    self.freeArea = freeArea
+    if self.covered != nil { start() } else { stop() }
   }
 
   private func start() {
@@ -36,7 +44,7 @@ final class WindowEvictor {
   }
 
   private func sweep() {
-    guard let edge = edgeBounds, Permissions.canPostEvents,
+    guard let covered, Permissions.canPostEvents,
           let list = CGWindowListCopyWindowInfo([.optionOnScreenOnly, .excludeDesktopElements], kCGNullWindowID) as? [[String: Any]] else { return }
     for info in list {
       guard (info[kCGWindowLayer as String] as? Int) == 0,
@@ -44,14 +52,23 @@ final class WindowEvictor {
             let b = info[kCGWindowBounds as String] as? [String: CGFloat] else { continue }
       let rect = CGRect(x: b["X"] ?? 0, y: b["Y"] ?? 0, width: b["Width"] ?? 0, height: b["Height"] ?? 0)
       guard rect.width > 40, rect.height > 40 else { continue }
-      let overlap = rect.intersection(edge)
-      // Mostly on the Edge (its centre is there, or over half its area).
-      guard !overlap.isNull, edge.contains(CGPoint(x: rect.midX, y: rect.midY)) || overlap.width * overlap.height > rect.width * rect.height / 2 else { continue }
-      move(pid: pid, windowRect: rect, ownerName: info[kCGWindowOwnerName as String] as? String ?? "?")
+      let overlap = rect.intersection(covered)
+      guard !overlap.isNull else { continue }
+      let owner = info[kCGWindowOwnerName as String] as? String ?? "?"
+      if let freeArea, let edgeBounds {
+        // Split mode: a window on the Edge that reaches under the dashboard slides (and if needed
+        // shrinks) into the regular part. Windows mostly on another display are left alone.
+        guard edgeBounds.contains(CGPoint(x: rect.midX, y: rect.midY)), overlap.width > 16, overlap.height > 16 else { continue }
+        move(pid: pid, windowRect: rect, ownerName: owner, to: SplitLayout.fit(rect, into: freeArea))
+      } else {
+        // Mostly on the Edge (its centre is there, or over half its area).
+        guard covered.contains(CGPoint(x: rect.midX, y: rect.midY)) || overlap.width * overlap.height > rect.width * rect.height / 2 else { continue }
+        move(pid: pid, windowRect: rect, ownerName: owner, to: destinationFrame(for: rect.size))
+      }
     }
   }
 
-  private func move(pid: pid_t, windowRect: CGRect, ownerName: String) {
+  private func move(pid: pid_t, windowRect: CGRect, ownerName: String, to target: CGRect) {
     let app = AXUIElementCreateApplication(pid)
     var value: CFTypeRef?
     let err = AXUIElementCopyAttributeValue(app, kAXWindowsAttribute as CFString, &value)
@@ -59,7 +76,6 @@ final class WindowEvictor {
       Log.error(.evictor, "cannot list \(ownerName) windows (AX error \(err.rawValue))")
       return
     }
-    let target = destinationFrame(for: windowRect.size)
     for w in windows {
       guard let frame = axFrame(w), abs(frame.minX - windowRect.minX) < 2, abs(frame.minY - windowRect.minY) < 2 else { continue }
       var origin = target.origin
@@ -69,8 +85,12 @@ final class WindowEvictor {
       }
       if size != windowRect.size, let sizeValue = AXValueCreate(.cgSize, &size) {
         AXUIElementSetAttributeValue(w, kAXSizeAttribute as CFString, sizeValue)
+        // Some apps refuse a position that would put the old, larger size off screen; retry now it fits.
+        if let posValue = AXValueCreate(.cgPoint, &origin) {
+          AXUIElementSetAttributeValue(w, kAXPositionAttribute as CFString, posValue)
+        }
       }
-      Log.info(.evictor, "moved a \(ownerName) window off the Edge")
+      Log.info(.evictor, "moved a \(ownerName) window out from under the dashboard")
       return
     }
     Log.error(.evictor, "no AX window of \(ownerName) matches \(windowRect); AX frames: \(windows.compactMap(axFrame))")

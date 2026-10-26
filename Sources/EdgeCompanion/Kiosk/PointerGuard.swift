@@ -4,7 +4,7 @@ import EdgeCore
 
 /// Shapes where the real mouse pointer may go, with one event tap at the HID level:
 ///
-/// - **Fence:** keeps the pointer off the Edge while the dashboard owns it. Entering with Option
+/// - **Fence:** keeps the pointer off the dashboard (the whole Edge, or one end in split mode). Entering with Option
 ///   held (optional) lets the pointer roam the Edge until it leaves again.
 /// - **Dock lock:** keeps the pointer a few points away from the Edge's Dock edge, so the Dock never
 ///   lands on the Edge. The main and built-in displays work as usual.
@@ -73,10 +73,10 @@ final class PointerGuard {
     if on, let edge { dockRelocator.check(after: delay, ifOn: edge) } else { dockRelocator.cancel() }
   }
 
-  /// `edgeBounds` nil or `fenceEnabled` false turns the fence off; the tap keeps running while the Dock lock is on.
-  func configure(edgeBounds: CGRect?, fenceEnabled: Bool, allowOptionEntry: Bool, dockLock: Bool) {
+  /// `fence` is the area the pointer stays out of (nil: none); the tap keeps running while the Dock lock is on.
+  func configure(edgeBounds: CGRect?, fence: CGRect?, allowOptionEntry: Bool, dockLock: Bool) {
     lock.lock()
-    fenced = fenceEnabled ? edgeBounds : nil
+    fenced = edgeBounds == nil ? nil : fence
     self.edgeBounds = edgeBounds
     self.allowOptionEntry = allowOptionEntry
     self.dockLock = dockLock
