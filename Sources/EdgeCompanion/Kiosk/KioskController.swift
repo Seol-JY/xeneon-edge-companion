@@ -53,13 +53,21 @@ final class KioskController: ObservableObject {
   var coveredBounds: CGRect? {
     guard isVisible, let display else { return nil }
     guard let split else { return display.bounds }
-    return SplitLayout.dashboardRect(in: display.bounds, side: split.side, length: split.length)
+    let rect = SplitLayout.dashboardRect(in: display.bounds, side: split.side, length: split.length)
+    return SplitLayout.belowMenuBar(rect, display: display.bounds, menuBar: display.screen.map(Self.menuBarHeight) ?? 0, yDown: true)
   }
 
   /// The panel's frame in AppKit coordinates.
   private func panelFrame(on screen: NSScreen) -> NSRect {
     guard let split else { return screen.frame }
-    return SplitLayout.dashboardRect(in: screen.frame, side: split.side, length: split.length, yDown: false)
+    let rect = SplitLayout.dashboardRect(in: screen.frame, side: split.side, length: split.length, yDown: false)
+    // In split mode the Edge keeps its menu bar (menus, clock, status icons) across the full width.
+    return SplitLayout.belowMenuBar(rect, display: screen.frame, menuBar: Self.menuBarHeight(screen), yDown: false)
+  }
+
+  /// The menu bar's height on `screen` (0 when it auto-hides or the display has none).
+  static func menuBarHeight(_ screen: NSScreen) -> CGFloat {
+    max(0, screen.frame.maxY - screen.visibleFrame.maxY)
   }
 
   /// Global-point hit test used by the touch router (main thread).
@@ -88,6 +96,7 @@ final class KioskController: ObservableObject {
     let frame = panelFrame(on: screen)
     if panel.frame != frame {
       panel.setFrame(frame, display: true)
+      Log.info(.kiosk, "panel frame \(Int(frame.minX)),\(Int(frame.minY)) \(Int(frame.width))×\(Int(frame.height)) (got \(Int(panel.frame.width))×\(Int(panel.frame.height)))")
     }
     if !panel.isVisible { Log.info(.kiosk, "showing on \(display.summary)") }
     panel.orderFrontRegardless()

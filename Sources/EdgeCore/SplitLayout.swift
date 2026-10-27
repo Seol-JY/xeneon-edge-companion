@@ -43,6 +43,19 @@ public enum SplitLayout {
     return CGRect(x: display.minX, y: y, width: display.width, height: display.height - dash.height)
   }
 
+  /// `rect` with the display's top `menuBar` points removed where it reaches them.
+  public static func belowMenuBar(_ rect: CGRect, display: CGRect, menuBar: CGFloat, yDown: Bool = true) -> CGRect {
+    guard menuBar > 0 else { return rect }
+    if yDown {
+      let top = display.minY + menuBar
+      guard rect.minY < top else { return rect }
+      return CGRect(x: rect.minX, y: top, width: rect.width, height: max(0, rect.maxY - top))
+    }
+    let top = display.maxY - menuBar
+    guard rect.maxY > top else { return rect }
+    return CGRect(x: rect.minX, y: rect.minY, width: rect.width, height: max(0, top - rect.minY))
+  }
+
   /// Moves and, if needed, shrinks `rect` so it lies inside `area`, moving it as little as possible.
   public static func fit(_ rect: CGRect, into area: CGRect) -> CGRect {
     let w = min(rect.width, area.width)

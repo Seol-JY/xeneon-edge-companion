@@ -4,7 +4,9 @@ import EdgeCore
 
 /// Moves other apps' windows out from under the dashboard, so nothing gets "lost" underneath.
 /// With the whole Edge covered they go to the main display; in split mode they are fitted into the
-/// Edge's regular part. Uses the Accessibility API; checks cheaply on app activation and every few seconds.
+/// Edge's regular part. Uses the Accessibility API: each app's window move/resize/create
+/// notifications trigger a check once the window settles (mouse released), with a slow timer as
+/// a backstop.
 final class WindowEvictor {
   private var covered: CGRect?
   private var edgeBounds: CGRect?
@@ -12,6 +14,13 @@ final class WindowEvictor {
   private var freeArea: CGRect?
   private var timer: Timer?
   private var observer: NSObjectProtocol?
+  private var appObservers: [NSObjectProtocol] = []
+  /// One Accessibility observer per running app, for its windows' move/resize/create notifications.
+  private var axObservers: [pid_t: AXObserver] = [:]
+  private var pendingSweep: DispatchWorkItem?
+  /// When we last moved a window of each app; event-driven checks leave those alone briefly so an
+  /// app that refuses a frame can't set off a loop of our own moves.
+  private var lastMoved: [pid_t: Date] = [:]
   private let ownPID = ProcessInfo.processInfo.processIdentifier
 
   /// `covered` is the dashboard's area (nil: off); `freeArea` is set only in split mode.
@@ -23,7 +32,11 @@ final class WindowEvictor {
   }
 
   private func start() {
-    guard timer == nil else { return }
+    guard timer == nil else {
+      // Already running; pick up apps missed before Accessibility was granted.
+      NSWorkspace.shared.runningApplications.forEach(watch)
+      return
+    }
     Log.info(.evictor, "watching the Edge for stray windows")
     let t = Timer(timeInterval: 3, repeats: true) { [weak self] _ in self?.sweep() }
     t.tolerance = 1
@@ -32,7 +45,60 @@ final class WindowEvictor {
     observer = NSWorkspace.shared.notificationCenter.addObserver(forName: NSWorkspace.didActivateApplicationNotification, object: nil, queue: .main) { [weak self] _ in
       DispatchQueue.main.asyncAfter(deadline: .now() + 0.4) { self?.sweep() }
     }
+    let ws = NSWorkspace.shared.notificationCenter
+    appObservers.append(ws.addObserver(forName: NSWorkspace.didLaunchApplicationNotification, object: nil, queue: .main) { [weak self] note in
+      if let app = note.userInfo?[NSWorkspace.applicationUserInfoKey] as? NSRunningApplication { self?.watch(app) }
+    })
+    appObservers.append(ws.addObserver(forName: NSWorkspace.didTerminateApplicationNotification, object: nil, queue: .main) { [weak self] note in
+      if let app = note.userInfo?[NSWorkspace.applicationUserInfoKey] as? NSRunningApplication { self?.unwatch(app.processIdentifier) }
+    })
+    NSWorkspace.shared.runningApplications.forEach(watch)
     sweep()
+  }
+
+  // MARK: - Window notifications
+
+  private static let windowNotifications = [kAXWindowMovedNotification, kAXWindowResizedNotification, kAXWindowCreatedNotification] as [CFString]
+
+  private func watch(_ app: NSRunningApplication) {
+    let pid = app.processIdentifier
+    guard app.activationPolicy == .regular, pid != ownPID, axObservers[pid] == nil, Permissions.canPostEvents else { return }
+    var created: AXObserver?
+    let callback: AXObserverCallback = { _, _, _, refcon in
+      guard let refcon else { return }
+      Unmanaged<WindowEvictor>.fromOpaque(refcon).takeUnretainedValue().windowChanged()
+    }
+    guard AXObserverCreate(pid, callback, &created) == .success, let obs = created else { return }
+    let element = AXUIElementCreateApplication(pid)
+    let refcon = Unmanaged.passUnretained(self).toOpaque()
+    for name in Self.windowNotifications {
+      AXObserverAddNotification(obs, element, name, refcon)
+    }
+    CFRunLoopAddSource(CFRunLoopGetMain(), AXObserverGetRunLoopSource(obs), .defaultMode)
+    axObservers[pid] = obs
+  }
+
+  private func unwatch(_ pid: pid_t) {
+    guard let obs = axObservers.removeValue(forKey: pid) else { return }
+    CFRunLoopRemoveSource(CFRunLoopGetMain(), AXObserverGetRunLoopSource(obs), .defaultMode)
+    lastMoved[pid] = nil
+  }
+
+  /// A window moved, resized or appeared: check once it settles and the mouse is up, so a window
+  /// being dragged is never pulled out from under the pointer.
+  private func windowChanged() {
+    pendingSweep?.cancel()
+    let work = DispatchWorkItem { [weak self] in self?.sweepWhenSettled() }
+    pendingSweep = work
+    DispatchQueue.main.asyncAfter(deadline: .now() + 0.25, execute: work)
+  }
+
+  private func sweepWhenSettled() {
+    if NSEvent.pressedMouseButtons != 0 {
+      windowChanged()
+      return
+    }
+    sweep(skipRecent: true)
   }
 
   private func stop() {
@@ -41,10 +107,20 @@ final class WindowEvictor {
     timer = nil
     if let observer { NSWorkspace.shared.notificationCenter.removeObserver(observer) }
     observer = nil
+    appObservers.forEach { NSWorkspace.shared.notificationCenter.removeObserver($0) }
+    appObservers.removeAll()
+    Array(axObservers.keys).forEach(unwatch)
+    pendingSweep?.cancel()
+    pendingSweep = nil
   }
 
-  private func sweep() {
-    guard let covered, Permissions.canPostEvents,
+  /// Accessibility hides other apps' windows while the screen is locked; checking then only fails.
+  private static var screenLocked: Bool {
+    (CGSessionCopyCurrentDictionary() as? [String: Any])?["CGSSessionScreenIsLocked"] as? Bool ?? false
+  }
+
+  private func sweep(skipRecent: Bool = false) {
+    guard let covered, Permissions.canPostEvents, !Self.screenLocked,
           let list = CGWindowListCopyWindowInfo([.optionOnScreenOnly, .excludeDesktopElements], kCGNullWindowID) as? [[String: Any]] else { return }
     for info in list {
       guard (info[kCGWindowLayer as String] as? Int) == 0,
@@ -55,6 +131,7 @@ final class WindowEvictor {
       let overlap = rect.intersection(covered)
       guard !overlap.isNull else { continue }
       let owner = info[kCGWindowOwnerName as String] as? String ?? "?"
+      if skipRecent, let last = lastMoved[pid], Date().timeIntervalSince(last) < 1.5 { continue }
       if let freeArea, let edgeBounds {
         // Split mode: a window on the Edge that reaches under the dashboard slides (and if needed
         // shrinks) into the regular part. Windows mostly on another display are left alone.
@@ -90,6 +167,7 @@ final class WindowEvictor {
           AXUIElementSetAttributeValue(w, kAXPositionAttribute as CFString, posValue)
         }
       }
+      lastMoved[pid] = Date()
       Log.info(.evictor, "moved a \(ownerName) window out from under the dashboard")
       return
     }
