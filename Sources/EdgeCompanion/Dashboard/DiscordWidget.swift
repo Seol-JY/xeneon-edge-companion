@@ -5,6 +5,7 @@ import SwiftUI
 /// ready for the next call. On a call: the elapsed time, and when linked in Settings the channel,
 /// who is in it and speaking, and mute / deafen / leave.
 struct DiscordWidget: View {
+  let id: UUID
   @ObservedObject private var discord = DiscordController.shared
   /// The leave button asks for a second tap.
   @State private var confirmLeave = false
@@ -13,19 +14,24 @@ struct DiscordWidget: View {
   static let speakingGreen = Color(red: 0.14, green: 0.65, blue: 0.35)
 
   var body: some View {
-    WidgetCard {
-      GeometryReader { geo in
-        let size = geo.size
-        Group {
-          if !discord.running { offState }
-          else if !discord.inCall { idleState(size) }
-          else if discord.linked, let call = discord.call { callState(call, size) }
-          else { basicCallState(size) }
+    PagedCard(id: id, count: discord.linked ? 2 : 1, indicatorBottomInset: 4) { page in
+      if page == 1 {
+        DiscordVoiceDevicesPage(discord: discord)
+          .padding(4)
+      } else {
+        GeometryReader { geo in
+          let size = geo.size
+          Group {
+            if !discord.running { offState }
+            else if !discord.inCall { idleState(size) }
+            else if discord.linked, let call = discord.call { callState(call, size) }
+            else { basicCallState(size) }
+          }
+          .frame(width: size.width, height: size.height)
         }
-        .frame(width: size.width, height: size.height)
+        // A little more room than other cards; the header and buttons otherwise sit close to the edge.
+        .padding(4)
       }
-      // A little more room than other cards; the header and buttons otherwise sit close to the edge.
-      .padding(4)
     }
     .onAppear { discord.retain() }
     .onDisappear {
@@ -133,20 +139,33 @@ struct DiscordWidget: View {
     let capacity = columns * rows
     let shown = members.count > capacity ? Array(members.prefix(capacity - 1)) : members
     let extra = members.count - shown.count
-    return LazyVGrid(columns: Array(repeating: GridItem(.fixed(avatar), spacing: spacing), count: min(columns, max(members.count, 1))), spacing: 8) {
-      ForEach(shown) { member in
-        AvatarBubble(member: member, image: discord.avatars[member.id], speaking: discord.speaking.contains(member.id), size: avatar)
-      }
-      if extra > 0 {
-        VStack(spacing: 8) {
-          Circle()
-            .fill(Color.white.opacity(0.08))
-            .frame(width: avatar, height: avatar)
-            .overlay(Text("+\(extra)").font(Theme.number(avatar * 0.32, weight: .bold)).foregroundStyle(Theme.textSecondary))
-          Text(" ").font(Theme.text(13))
+    let columnCount = min(columns, max(members.count, 1))
+    let itemCount = shown.count + (extra > 0 ? 1 : 0)
+    let rowCount = max(1, (itemCount + columnCount - 1) / columnCount)
+    return VStack(spacing: 8) {
+      ForEach(0..<rowCount, id: \.self) { row in
+        HStack(alignment: .top, spacing: spacing) {
+          ForEach(0..<columnCount, id: \.self) { column in
+            let index = row * columnCount + column
+            if index < shown.count {
+              let member = shown[index]
+              AvatarBubble(member: member, image: discord.avatars[member.id], speaking: discord.speaking.contains(member.id), size: avatar)
+                .frame(width: avatar)
+            } else if index == shown.count, extra > 0 {
+              VStack(spacing: 8) {
+                Circle().fill(Color.white.opacity(0.08))
+                  .frame(width: avatar, height: avatar)
+                  .overlay(Text("+\(extra)").font(Theme.number(avatar * 0.32, weight: .bold)).foregroundStyle(Theme.textSecondary))
+                Text(" ").font(Theme.text(13))
+              }
+            } else {
+              Color.clear.frame(width: avatar, height: rowHeight)
+            }
+          }
         }
       }
     }
+
   }
 
   /// Discord's own controls; only shown when linked. Deafening also mutes in Discord, so the

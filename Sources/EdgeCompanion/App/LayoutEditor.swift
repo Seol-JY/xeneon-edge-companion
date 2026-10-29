@@ -55,28 +55,22 @@ struct LayoutEditor: View {
   private var preview: some View {
     GeometryReader { geo in
       let s = store.settings
-      let gap: CGFloat = 4
-      let terminalW = s.terminalEnabled ? geo.size.width * CGFloat(min(max(s.terminalWidth, 480), 2200) / 2560) : 0
-      let areaX: CGFloat = s.terminalEnabled && s.terminalSide == .left ? terminalW + gap : 0
-      let areaW = geo.size.width - (s.terminalEnabled ? terminalW + gap : 0)
+      let scale = max(0, geo.size.width - 6) / (2560 - 28)
+      let gap = Theme.gap * scale
       ZStack(alignment: .topLeading) {
         RoundedRectangle(cornerRadius: 8).fill(Color.black.opacity(0.85))
-        if s.terminalEnabled {
-          RoundedRectangle(cornerRadius: 5).fill(Color.white.opacity(0.08))
-            .overlay(Image(systemName: "terminal").foregroundStyle(.secondary))
-            .frame(width: terminalW - 6, height: geo.size.height - 6)
-            .offset(x: s.terminalSide == .left ? 3 : geo.size.width - terminalW + 3, y: 3)
-        }
         if let page {
-          let layout = GridLayout.pack(page.slots.map(\.size))
-          let columns = CGFloat(max(layout.columnCount, 1))
-          let cellW = (areaW - 6 - gap * (columns - 1)) / columns
+          let layout = GridLayout.pack(page.slots.map { $0.kind == .terminal ? .tall : $0.size })
+          let terminalColumn = layout.placements.first { page.slots[$0.index].kind == .terminal }?.column
+          let metrics = GridLayout.columnMetrics(count: layout.columnCount, width: geo.size.width - 6,
+                                                gap: gap, fixedColumn: terminalColumn,
+                                                fixedWidth: s.terminalWidth * scale, minimumColumnWidth: 180 * scale)
           let cellH = (geo.size.height - 6 - gap) / 2
           ForEach(layout.placements, id: \.index) { p in
             let slot = page.slots[p.index]
             tile(slot)
-              .frame(width: cellW * CGFloat(p.columns) + gap * CGFloat(p.columns - 1), height: cellH * CGFloat(p.rows) + gap * CGFloat(p.rows - 1))
-              .offset(x: areaX + 3 + (cellW + gap) * CGFloat(p.column), y: 3 + (cellH + gap) * CGFloat(p.row))
+              .frame(width: metrics.widths[p.column ..< p.column + p.columns].reduce(0, +) + gap * CGFloat(p.columns - 1), height: cellH * CGFloat(p.rows) + gap * CGFloat(p.rows - 1))
+              .offset(x: 3 + metrics.origins[p.column], y: 3 + (cellH + gap) * CGFloat(p.row))
           }
         }
       }
@@ -146,6 +140,7 @@ struct LayoutEditor: View {
   private func sizeControls(_ slot: WidgetSlot) -> some View {
     HStack(spacing: 10) {
       Text(slot.kind.title).font(.headline)
+      if slot.kind != .terminal {
       Picker(tr("크기", "Size"), selection: Binding(get: { slot.size }, set: { resize(slot.id, $0) })) {
         Text("1×1").tag(WidgetSize.small)
         Text("2×1").tag(WidgetSize.wide)
@@ -155,6 +150,10 @@ struct LayoutEditor: View {
       .pickerStyle(.segmented)
       .labelsHidden()
       .frame(width: 200)
+      } else {
+        Text(tr("전체 높이 · 너비는 터미널 설정에서 조절", "Full height · width in Terminal settings"))
+          .font(.caption).foregroundStyle(.secondary)
+      }
       Button { shift(slot.id, by: -1) } label: { Image(systemName: "arrow.left") }.help(tr("앞으로", "Move earlier"))
       Button { shift(slot.id, by: 1) } label: { Image(systemName: "arrow.right") }.help(tr("뒤로", "Move later"))
       if pages.count > 1 {
@@ -186,7 +185,7 @@ struct LayoutEditor: View {
   }
 
   private func add(_ kind: WidgetKind) {
-    let slot = WidgetSlot(kind: kind)
+    let slot = WidgetSlot(kind: kind, size: kind == .terminal ? .tall : .small)
     updatePage { $0.slots.append(slot) }
     selected = slot.id
   }
@@ -248,6 +247,7 @@ struct LayoutEditor: View {
 extension WidgetKind {
   var symbol: String {
     switch self {
+    case .terminal: return "terminal"
     case .clock: return "clock"
     case .cpu: return "cpu"
     case .gpu: return "square.stack.3d.up"
@@ -262,6 +262,7 @@ extension WidgetKind {
     case .volume: return "speaker.wave.2.fill"
     case .sleep: return "moon.fill"
     case .discord: return "headphones"
+    case .homeTemperature: return "thermometer.medium"
     case .web: return "globe"
     case .media: return "photo.on.rectangle.angled"
     case .spacer: return "square.dashed"

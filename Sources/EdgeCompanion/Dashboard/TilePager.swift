@@ -66,18 +66,20 @@ final class TilePager: ObservableObject {
 struct PagedCard<Content: View, Backdrop: View>: View {
   let id: UUID
   let count: Int
+  let indicatorBottomInset: CGFloat
   @ViewBuilder var content: (Int) -> Content
   @ViewBuilder var backdrop: (Int) -> Backdrop
   @ObservedObject private var pager = TilePager.shared
 
-  init(id: UUID, count: Int, @ViewBuilder content: @escaping (Int) -> Content) where Backdrop == EmptyView {
-    self.init(id: id, count: count, backdrop: { _ in EmptyView() }, content: content)
+  init(id: UUID, count: Int, indicatorBottomInset: CGFloat = 8, @ViewBuilder content: @escaping (Int) -> Content) where Backdrop == EmptyView {
+    self.init(id: id, count: count, indicatorBottomInset: indicatorBottomInset, backdrop: { _ in EmptyView() }, content: content)
   }
 
   /// `backdrop` fills the whole card behind a page and fades with it.
-  init(id: UUID, count: Int, @ViewBuilder backdrop: @escaping (Int) -> Backdrop, @ViewBuilder content: @escaping (Int) -> Content) {
+  init(id: UUID, count: Int, indicatorBottomInset: CGFloat = 8, @ViewBuilder backdrop: @escaping (Int) -> Backdrop, @ViewBuilder content: @escaping (Int) -> Content) {
     self.id = id
     self.count = count
+    self.indicatorBottomInset = indicatorBottomInset
     self.content = content
     self.backdrop = backdrop
   }
@@ -96,8 +98,9 @@ struct PagedCard<Content: View, Backdrop: View>: View {
       ZStack {
         content(current)
           .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topLeading)
-          .padding(.bottom, count > 1 ? 14 : 0)
+          .padding(.bottom, count > 1 ? 22 : 0)
           .padding(Self.inset)
+          .compositingGroup()
           .id(current)
           .transition(slide)
       }
@@ -114,7 +117,7 @@ struct PagedCard<Content: View, Backdrop: View>: View {
                 .onTapGesture { pager.select(id, page: i) }
             }
           }
-          .padding(.bottom, Self.inset)
+          .padding(.bottom, indicatorBottomInset)
         }
       }
     }

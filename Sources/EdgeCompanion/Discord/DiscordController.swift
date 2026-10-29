@@ -1,5 +1,6 @@
 import AppKit
 import CoreAudio
+import EdgeCore
 
 /// What the Discord widget shows. Without any setup it knows whether Discord is running and whether
 /// it is using the microphone (on a call). Linked to the user's
@@ -33,6 +34,16 @@ final class DiscordController: ObservableObject {
     var guildName: String?
     var members: [Member]
   }
+
+  enum VoiceDirection: String, CaseIterable { case output, input }
+  @Published private(set) var inputRoute = DiscordVoiceRoute()
+  @Published private(set) var outputRoute = DiscordVoiceRoute()
+  @Published private(set) var updatingVoiceDevices = false
+  @Published private(set) var voiceDeviceError: String?
+  private var voiceDeviceRequest: UUID?
+  private var voiceDeviceNonce: String?
+  private var voiceDeviceTimeout: DispatchWorkItem?
+  private var voiceDeviceRetry: DispatchWorkItem?
 
   @Published private(set) var running = false
   /// Discord is capturing from the microphone, which it does only on a call.
@@ -115,6 +126,7 @@ final class DiscordController: ObservableObject {
     authorizeRequested = false
     ipc.close()
     resetCall()
+    resetVoiceDevices()
     link = .off
   }
 
@@ -128,6 +140,7 @@ final class DiscordController: ObservableObject {
     } else {
       ipc.close()
       resetCall()
+      resetVoiceDevices()
       if hasCredentials, link != .off { link = .connecting }
     }
   }
@@ -201,6 +214,7 @@ final class DiscordController: ObservableObject {
   private func closed(_ reason: String?) {
     pending.removeAll()
     resetCall()
+    resetVoiceDevices()
     guard hasCredentials else { return }
     if let reason, !reason.isEmpty {
       Log.info(.dashboard, "discord: closed (\(reason))")
@@ -211,12 +225,14 @@ final class DiscordController: ObservableObject {
     if running, users > 0 || authorizeRequested { scheduleReconnect(after: 5) }
   }
 
-  private func command(_ cmd: String, _ args: [String: Any] = [:], evt: String? = nil, done: (([String: Any]?, String?) -> Void)? = nil) {
+  @discardableResult
+  private func command(_ cmd: String, _ args: [String: Any] = [:], evt: String? = nil, done: (([String: Any]?, String?) -> Void)? = nil) -> String {
     let nonce = UUID().uuidString
     var payload: [String: Any] = ["cmd": cmd, "args": args, "nonce": nonce]
     if let evt { payload["evt"] = evt }
     if let done { pending[nonce] = done }
     ipc.send(.frame, payload)
+    return nonce
   }
 
   private func handle(_ message: [String: Any]) {
@@ -313,7 +329,7 @@ final class DiscordController: ObservableObject {
       Log.info(.dashboard, "discord: linked")
       self.command("SUBSCRIBE", evt: "VOICE_CHANNEL_SELECT")
       self.command("SUBSCRIBE", evt: "VOICE_SETTINGS_UPDATE")
-      self.command("GET_VOICE_SETTINGS") { [weak self] data, _ in self?.applySettings(data) }
+      self.reloadVoiceDevices()
       self.loadSelectedChannel()
     }
   }
@@ -322,6 +338,93 @@ final class DiscordController: ObservableObject {
     guard let data else { return }
     if let mute = data["mute"] as? Bool { selfMute = mute }
     if let deaf = data["deaf"] as? Bool { selfDeaf = deaf }
+    if let input = data["input"] as? [String: Any] { inputRoute = inputRoute.applying(input) }
+    if let output = data["output"] as? [String: Any] { outputRoute = outputRoute.applying(output) }
+  }
+
+  // MARK: Discord's own audio devices (does not change macOS defaults)
+
+  func route(_ direction: VoiceDirection) -> DiscordVoiceRoute {
+    direction == .input ? inputRoute : outputRoute
+  }
+
+  func reloadVoiceDevices() {
+    guard let request = beginVoiceDeviceRequest() else { return }
+    readVoiceDevices(request: request)
+  }
+
+  func selectVoiceDevice(_ device: DiscordVoiceDevice, direction: VoiceDirection) {
+    guard route(direction).devices.contains(device), route(direction).selectedID != device.id,
+          let request = beginVoiceDeviceRequest() else { return }
+    voiceDeviceNonce = command("SET_VOICE_SETTINGS", [direction.rawValue: ["device_id": device.id]]) { [weak self] data, error in
+      guard let self, self.voiceDeviceRequest == request else { return }
+      guard error == nil else {
+        self.finishVoiceDeviceRequest(error: tr("장치를 변경하지 못했어요. 다시 시도해 주세요.", "Couldn't change the device. Try again."))
+        return
+      }
+      self.applySettings(data)
+      // Confirm the selection from Discord rather than showing an optimistic checkmark.
+      self.readVoiceDevices(request: request, expected: (direction, device.id))
+    }
+  }
+
+  private func beginVoiceDeviceRequest() -> UUID? {
+    guard linked, running, ipc.isOpen, !updatingVoiceDevices else { return nil }
+    let request = UUID()
+    voiceDeviceRequest = request
+    updatingVoiceDevices = true
+    voiceDeviceError = nil
+    let timeout = DispatchWorkItem { [weak self] in
+      guard let self, self.voiceDeviceRequest == request else { return }
+      if let nonce = self.voiceDeviceNonce { self.pending[nonce] = nil }
+      self.finishVoiceDeviceRequest(error: tr("Discord 응답이 늦어요. 다시 시도해 주세요.", "Discord didn't respond in time. Try again."))
+    }
+    voiceDeviceTimeout = timeout
+    DispatchQueue.main.asyncAfter(deadline: .now() + 8, execute: timeout)
+    return request
+  }
+
+  private func readVoiceDevices(request: UUID, expected: (VoiceDirection, String)? = nil, attempt: Int = 0) {
+    voiceDeviceNonce = command("GET_VOICE_SETTINGS") { [weak self] data, error in
+      guard let self, self.voiceDeviceRequest == request else { return }
+      if let data, error == nil { self.applySettings(data) }
+      // Discord can answer before its audio devices have been enumerated at startup.
+      // Retry reads only, never repeat a SET or select a guessed default device.
+      let complete = self.inputRoute.selectedID != nil && self.outputRoute.selectedID != nil
+      guard data != nil, error == nil, complete else {
+        if attempt < 3 {
+          if attempt == 0 {
+            Log.info(.dashboard, "discord: initial voice device read incomplete; retrying (error=\(error ?? "incomplete device selection"), input=\(self.inputRoute.selectedID != nil), output=\(self.outputRoute.selectedID != nil))")
+          }
+          let retry = DispatchWorkItem { [weak self] in
+            guard let self, self.voiceDeviceRequest == request, self.linked else { return }
+            self.readVoiceDevices(request: request, expected: expected, attempt: attempt + 1)
+          }
+          self.voiceDeviceRetry = retry
+          DispatchQueue.main.asyncAfter(deadline: .now() + [0.4, 0.8, 1.6][attempt], execute: retry)
+        } else {
+          Log.info(.dashboard, "discord: voice device read failed after retries")
+          self.finishVoiceDeviceRequest(error: tr("음성 장치를 읽지 못했어요. 새로고침해 주세요.", "Couldn't read voice devices. Try refreshing."))
+        }
+        return
+      }
+      if let (direction, id) = expected, self.route(direction).selectedID != id {
+        self.finishVoiceDeviceRequest(error: tr("Discord에 장치 변경이 반영되지 않았어요.", "Discord didn't apply the device change."))
+      } else { self.finishVoiceDeviceRequest(error: nil) }
+    }
+  }
+
+  private func finishVoiceDeviceRequest(error: String?) {
+    voiceDeviceTimeout?.cancel(); voiceDeviceTimeout = nil
+    voiceDeviceRetry?.cancel(); voiceDeviceRetry = nil
+    voiceDeviceRequest = nil; voiceDeviceNonce = nil
+    voiceDeviceError = error
+    updatingVoiceDevices = false
+  }
+
+  private func resetVoiceDevices() {
+    finishVoiceDeviceRequest(error: nil)
+    inputRoute = DiscordVoiceRoute(); outputRoute = DiscordVoiceRoute()
   }
 
   private func loadSelectedChannel() {

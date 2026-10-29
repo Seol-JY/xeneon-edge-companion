@@ -15,7 +15,7 @@ struct DashboardSwipe {
   var start: CGPoint
 }
 
-/// Root of the Edge panel: an optional terminal on one side and swipeable pages of widgets.
+/// Swipeable dashboard pages, including an optional full-height terminal widget.
 struct DashboardView: View {
   @ObservedObject var store: SettingsStore
   @ObservedObject var terminal: TerminalSession
@@ -28,13 +28,7 @@ struct DashboardView: View {
   var body: some View {
     let s = store.settings
     GeometryReader { geo in
-      HStack(spacing: Theme.gap) {
-        if s.terminalEnabled, s.terminalSide == .left { terminalCard(s, total: geo.size.width) }
-        pages(s)
-        if s.terminalEnabled, s.terminalSide == .right { terminalCard(s, total: geo.size.width) }
-      }
-      .padding(Theme.padding)
-      .frame(width: geo.size.width, height: geo.size.height)
+      pages(s, width: geo.size.width)
     }
     .overlay { NotificationOverlay() }
     .background(Theme.background)
@@ -51,12 +45,15 @@ struct DashboardView: View {
   }
 
   @ViewBuilder
-  private func pages(_ s: AppSettings) -> some View {
+  private func pages(_ s: AppSettings, width: CGFloat) -> some View {
     let count = s.pages.count
     let current = min(page, max(count - 1, 0))
     ZStack {
       if count > 0 {
-        PageGrid(page: s.pages[current])
+        PageGrid(page: s.pages[current], terminalWidth: s.terminalWidth)
+          .padding(Theme.padding)
+          .frame(width: width)
+          .compositingGroup()
           .id(s.pages[current].id)
           .transition(.asymmetric(
             insertion: .move(edge: forward ? .trailing : .leading),
@@ -68,9 +65,9 @@ struct DashboardView: View {
     .overlay(alignment: .bottom) {
       if count > 1, showDots {
         PageDots(count: count, current: current) { go(to: $0, count: count) }
-          .padding(.horizontal, 10).padding(.vertical, 6)
+          .padding(.horizontal, 10).padding(.vertical, 3)
           .background(Capsule().fill(Color.black.opacity(0.55)))
-          .padding(.bottom, 10)
+          .padding(.bottom, 1)
           .transition(.opacity)
       }
     }
@@ -81,9 +78,12 @@ struct DashboardView: View {
     let next = min(max(target, 0), count - 1)
     guard next != page else { return }
     forward = next > page
-    withAnimation(.easeInOut(duration: 0.28)) {
-      page = next
-      showDots = true
+    // Commit the new direction before removing the old page, which owns its previous transition.
+    DispatchQueue.main.async {
+      withAnimation(.easeInOut(duration: 0.28)) {
+        page = next
+        showDots = true
+      }
     }
     hideDots?.cancel()
     let work = DispatchWorkItem { withAnimation(.easeOut(duration: 0.3)) { showDots = false } }
@@ -91,32 +91,30 @@ struct DashboardView: View {
     DispatchQueue.main.asyncAfter(deadline: .now() + 1.5, execute: work)
   }
 
-  private func terminalCard(_ s: AppSettings, total: CGFloat) -> some View {
-    TerminalCard(session: terminal)
-      .frame(width: min(max(s.terminalWidth, 480), total - 360))
-  }
 }
 
 /// One page: widgets packed into two rows. Every cell gets an exact frame, so a value changing
 /// inside a widget never makes the rest of the page lay out again.
 struct PageGrid: View {
   let page: DashboardPage
+  var terminalWidth: CGFloat = SettingsStore.shared.settings.terminalWidth
 
   var body: some View {
     GeometryReader { geo in
-      let layout = GridLayout.pack(page.slots.map(\.size))
-      let columns = CGFloat(max(layout.columnCount, 1))
-      let cellW = (geo.size.width - Theme.gap * (columns - 1)) / columns
+      let layout = GridLayout.pack(page.slots.map { $0.kind == .terminal ? .tall : $0.size })
+      let terminalColumn = layout.placements.first { page.slots[$0.index].kind == .terminal }?.column
+      let metrics = GridLayout.columnMetrics(count: layout.columnCount, width: geo.size.width,
+                                            gap: Theme.gap, fixedColumn: terminalColumn, fixedWidth: terminalWidth)
       let cellH = (geo.size.height - Theme.gap) / 2
       ZStack(alignment: .topLeading) {
         ForEach(layout.placements, id: \.index) { p in
           let slot = page.slots[p.index]
-          let w = cellW * CGFloat(p.columns) + Theme.gap * CGFloat(p.columns - 1)
+          let w = metrics.widths[p.column ..< p.column + p.columns].reduce(0, +) + Theme.gap * CGFloat(p.columns - 1)
           let h = cellH * CGFloat(p.rows) + Theme.gap * CGFloat(p.rows - 1)
           WidgetHost(slot: slot)
             .frame(width: floor(w), height: floor(h))
             .clipped()
-            .offset(x: floor((cellW + Theme.gap) * CGFloat(p.column)), y: floor((cellH + Theme.gap) * CGFloat(p.row)))
+            .offset(x: floor(metrics.origins[p.column]), y: floor((cellH + Theme.gap) * CGFloat(p.row)))
         }
       }
       .frame(width: geo.size.width, height: geo.size.height, alignment: .topLeading)
@@ -147,13 +145,15 @@ struct WidgetHost: View {
 
   var body: some View {
     switch slot.kind {
+    case .terminal: TerminalCard(session: TerminalSession.shared)
     case .clock: ClockWidget(id: slot.id, size: slot.size)
     case .launcher: LauncherWidget(items: SettingsStore.shared.settings.launcherItems)
     case .aiUsage: UsageWidget()
     case .timer: TimerWidget()
     case .volume: VolumeWidget(id: slot.id)
     case .sleep: SleepWidget()
-    case .discord: DiscordWidget()
+    case .discord: DiscordWidget(id: slot.id)
+    case .homeTemperature: HomeTemperatureWidget()
     case .web: WebWidget()
     case .media: MediaWidget(slotID: slot.id)
     case .spacer: Color.clear

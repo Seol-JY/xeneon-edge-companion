@@ -276,32 +276,26 @@ private struct DashboardTab: View {
   var body: some View {
     Form {
       Section(tr("터미널", "Terminal")) {
-        Toggle(tr("터미널 표시", "Show terminal"), isOn: $store.settings.terminalEnabled)
-        if store.settings.terminalEnabled {
-          Picker(tr("위치", "Side"), selection: $store.settings.terminalSide) {
-            Text(tr("왼쪽", "Left")).tag(TerminalSide.left)
-            Text(tr("오른쪽", "Right")).tag(TerminalSide.right)
+        Text(tr("배치 편집기에서 터미널 위젯을 하나 추가할 수 있어요. 높이는 전체 높이로 고정되며, 너비는 여기서 조절해요.", "Add one terminal widget in the layout editor. Its height fills the dashboard; adjust its width here."))
+          .font(.caption).foregroundStyle(.secondary)
+        LabeledContent(tr("너비", "Width")) {
+          Slider(value: $store.settings.terminalWidth, in: 600 ... 1900, step: 20).frame(width: 260)
+          Text("\(Int(store.settings.terminalWidth)) pt").monospacedDigit().frame(width: 64)
+        }
+        LabeledContent(tr("글자 크기", "Font size")) {
+          Stepper(value: $store.settings.terminalFontSize, in: 10 ... 22, step: 1) {
+            Text("\(Int(store.settings.terminalFontSize)) pt").monospacedDigit()
           }
-          .pickerStyle(.segmented)
-          LabeledContent(tr("너비", "Width")) {
-            Slider(value: $store.settings.terminalWidth, in: 600 ... 1900, step: 20).frame(width: 260)
-            Text("\(Int(store.settings.terminalWidth)) pt").monospacedDigit().frame(width: 64)
+        }
+        Toggle(tr("tmux 세션으로 실행 (앱을 다시 켜도 작업 유지)", "Run inside tmux (work survives app restarts)"), isOn: $store.settings.terminalUseTmux)
+        if store.settings.terminalUseTmux, TerminalSession.findTmux() != nil {
+          LabeledContent(tr("다른 터미널에서 붙기", "Attach from another terminal")) {
+            Text(TerminalSession.attachCommand).font(.system(.caption, design: .monospaced)).textSelection(.enabled)
           }
-          LabeledContent(tr("글자 크기", "Font size")) {
-            Stepper(value: $store.settings.terminalFontSize, in: 10 ... 22, step: 1) {
-              Text("\(Int(store.settings.terminalFontSize)) pt").monospacedDigit()
-            }
-          }
-          Toggle(tr("tmux 세션으로 실행 (앱을 다시 켜도 작업 유지)", "Run inside tmux (work survives app restarts)"), isOn: $store.settings.terminalUseTmux)
-          if store.settings.terminalUseTmux, TerminalSession.findTmux() != nil {
-            LabeledContent(tr("다른 터미널에서 붙기", "Attach from another terminal")) {
-              Text(TerminalSession.attachCommand).font(.system(.caption, design: .monospaced)).textSelection(.enabled)
-            }
-          }
-          if TerminalSession.findTmux() == nil {
-            Text(tr("tmux가 설치돼 있지 않아서 일반 셸로 실행돼요. `brew install tmux`로 설치할 수 있어요.", "tmux isn't installed, so a plain shell runs. Install it with `brew install tmux`."))
-              .font(.caption).foregroundStyle(.secondary)
-          }
+        }
+        if TerminalSession.findTmux() == nil {
+          Text(tr("tmux가 설치돼 있지 않아서 일반 셸로 실행돼요. `brew install tmux`로 설치할 수 있어요.", "tmux isn't installed, so a plain shell runs. Install it with `brew install tmux`."))
+            .font(.caption).foregroundStyle(.secondary)
         }
       }
       Section(tr("위젯 배치", "Widget layout")) {
@@ -310,6 +304,7 @@ private struct DashboardTab: View {
       UsageSection()
       WebPageSection(store: store)
       DiscordSection(store: store)
+      HomeTemperatureSection(store: store)
       Section(tr("알림", "Notifications")) {
         Toggle(tr("Mac 알림을 Edge에 띄우기", "Show Mac notifications on the Edge"), isOn: $store.settings.notificationsEnabled)
         Text(tr("알림 배너가 뜨면 이를 인식해 표시해요. Mac의 설정에 따라 실제로 Mac에 배너가 뜨는 경우에만 연동돼요.",
@@ -355,6 +350,7 @@ private struct DashboardTab: View {
 extension WidgetKind {
   var title: String {
     switch self {
+    case .terminal: return tr("터미널", "Terminal")
     case .clock: return tr("시계", "Clock")
     case .cpu: return "CPU"
     case .gpu: return "GPU"
@@ -369,6 +365,7 @@ extension WidgetKind {
     case .volume: return tr("볼륨", "Volume")
     case .sleep: return tr("잠자기", "Sleep")
     case .discord: return "Discord"
+    case .homeTemperature: return tr("실내 온도", "Room temperature")
     case .web: return tr("웹페이지", "Web page")
     case .media: return tr("사진·영상", "Photo & video")
     case .spacer: return tr("빈 공간", "Empty space")
@@ -614,5 +611,56 @@ private struct UsageSection: View {
     }
     claudeConnected = ClaudeStatusLine.isConnected
     Task { @MainActor in UsageService.shared.reloadClaude() }
+  }
+}
+
+// MARK: - Apple Home temperature
+
+private struct HomeTemperatureSection: View {
+  @ObservedObject var store: SettingsStore
+  @ObservedObject private var model = HomeTemperatureModel.shared
+  @State private var shortcut = ""
+  @State private var label = ""
+
+  var body: some View {
+    Section(tr("실내 온도 위젯", "Room temperature widget")) {
+      Text(tr("Apple 홈의 온도를 읽는 단축어를 연결해요. 1분마다 측정하고 최근 24시간의 변화를 그래프로 보여줘요.",
+              "Connect a shortcut that reads an Apple Home temperature. Readings are collected every minute, with a graph of the last 24 hours."))
+        .font(.caption).foregroundStyle(.secondary)
+      TextField(tr("단축어 이름", "Shortcut name"), text: $shortcut)
+        .textFieldStyle(.roundedBorder)
+      TextField(tr("표시 이름", "Display name"), text: $label, prompt: Text(tr("실내 온도", "Room temperature")))
+        .textFieldStyle(.roundedBorder)
+      HStack {
+        Button(tr("단축어 열기", "Open Shortcuts")) {
+          if let url = NSWorkspace.shared.urlForApplication(withBundleIdentifier: "com.apple.shortcuts") {
+            NSWorkspace.shared.open(url)
+          }
+        }
+        Spacer()
+        Button(model.isLoading ? tr("확인 중…", "Checking…") : tr("연결 확인", "Test connection")) {
+          let name = shortcut.trimmingCharacters(in: .whitespacesAndNewlines)
+          store.settings.homeTemperatureShortcut = name
+          store.settings.homeTemperatureLabel = label.trimmingCharacters(in: .whitespacesAndNewlines)
+          model.configure(shortcut: name, enabled: store.settings.dashboardEnabled && store.settings.pages.contains { $0.slots.contains { $0.kind == .homeTemperature } })
+          model.refresh()
+        }
+        .disabled(shortcut.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty || model.isLoading)
+      }
+      if let error = model.error {
+        Text(error).font(.caption).foregroundStyle(.orange)
+      } else if let value = model.latest {
+        LabeledContent(tr("마지막 측정", "Last reading")) {
+          Text(String(format: "%.1f °C", value.celsius)).monospacedDigit()
+          Text(value.date, style: .time).foregroundStyle(.secondary)
+        }
+      }
+      DisclosureGroup(tr("단축어 설정 방법", "Set up the shortcut")) {
+        Text(tr("단축어에서 ‘홈’의 ‘상태 가져오기’를 추가하고 온도 센서의 ‘현재 온도’를 선택해 주세요. 마지막 동작에서 온도 값을 반환하면 돼요. 처음에는 단축어 앱에서 실행해 접근을 허용한 뒤, 위에 이름을 입력하고 연결을 확인해 주세요.",
+                "In Shortcuts, add Home’s Get State action and choose your temperature sensor’s Current Temperature. Return that value as the final output. Run it in Shortcuts first to allow access, then enter its name above and test the connection."))
+          .font(.caption).foregroundStyle(.secondary)
+      }
+    }
+    .onAppear { shortcut = store.settings.homeTemperatureShortcut; label = store.settings.homeTemperatureLabel }
   }
 }

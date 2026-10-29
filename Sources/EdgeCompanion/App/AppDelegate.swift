@@ -95,6 +95,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
     TerminalSession.shared.configure(fontSize: s.terminalFontSize, useTmux: s.terminalUseTmux)
     settingsWindow?.title = tr("EdgeCompanion 설정", "EdgeCompanion Settings")
     reconfigureInputGuards()
+    HomeTemperatureModel.shared.configure(shortcut: s.homeTemperatureShortcut, enabled: s.dashboardEnabled && s.pages.contains { $0.slots.contains { $0.kind == .homeTemperature } })
     BannerWatcher.shared.setEnabled(s.notificationsEnabled && s.dashboardEnabled && Permissions.canPostEvents)
   }
 

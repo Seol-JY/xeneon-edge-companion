@@ -28,6 +28,35 @@ public enum GridLayout {
     public var columnCount: Int
   }
 
+  /// Shared by the dashboard and its scaled editor preview. A full-height terminal occupies
+  /// one column with a point-based width; the remaining columns share the available space.
+  public struct ColumnMetrics {
+    public var widths: [CGFloat]
+    public var origins: [CGFloat]
+  }
+
+  public static func columnMetrics(count: Int, width: CGFloat, gap: CGFloat,
+                                   fixedColumn: Int? = nil, fixedWidth: CGFloat = 0,
+                                   minimumColumnWidth: CGFloat = 180) -> ColumnMetrics {
+    guard count > 0 else { return ColumnMetrics(widths: [], origins: []) }
+    let available = max(0, width - gap * CGFloat(count - 1))
+    var widths = Array(repeating: available / CGFloat(count), count: count)
+    if let column = fixedColumn, widths.indices.contains(column) {
+      let otherCount = count - 1
+      // Keep ordinary widgets usable when the display is narrower than the saved preference.
+      let minimum = min(max(0, minimumColumnWidth), available / CGFloat(count))
+      let terminal = min(max(0, fixedWidth), max(0, available - minimum * CGFloat(otherCount)))
+      widths = Array(repeating: otherCount > 0 ? (available - terminal) / CGFloat(otherCount) : 0, count: count)
+      widths[column] = terminal
+    }
+    var x: CGFloat = 0
+    let origins = widths.map { value -> CGFloat in
+      defer { x += value + gap }
+      return x
+    }
+    return ColumnMetrics(widths: widths, origins: origins)
+  }
+
   public static func pack(_ sizes: [WidgetSize], rows: Int = 2) -> Result {
     var occupied: [[Bool]] = []   // [column][row]
     func free(_ c: Int, _ r: Int) -> Bool { c >= occupied.count || !occupied[c][r] }

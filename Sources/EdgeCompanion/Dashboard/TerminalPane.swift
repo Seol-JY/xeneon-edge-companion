@@ -152,6 +152,13 @@ struct TerminalPane: NSViewRepresentable {
   }
 
   func updateNSView(_ nsView: NSView, context: Context) {}
+
+  static func dismantleNSView(_ nsView: NSView, coordinator: ()) {
+    guard let window = nsView.window, let responder = window.firstResponder as? NSView,
+          responder.isDescendant(of: nsView) else { return }
+    window.makeFirstResponder(nil)
+    window.resignKey()
+  }
 }
 
 struct TerminalCard: View {

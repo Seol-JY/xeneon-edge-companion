@@ -12,10 +12,6 @@ struct EdgeProfile: Codable, Equatable {
   var touchCalibration: TouchCalibration = .identity
 }
 
-enum TerminalSide: String, Codable, CaseIterable {
-  case left, right
-}
-
 enum WidgetKind: String, Codable, CaseIterable, Identifiable {
   /// `network` also pages to disk activity; `system` pages to top processes.
   case clock, cpu, gpu, memory, network, sensors, battery, launcher, system, aiUsage, timer, volume
@@ -23,6 +19,10 @@ enum WidgetKind: String, Codable, CaseIterable, Identifiable {
   case sleep
   /// Discord voice: on a call or not, and with a linked app, who is in it.
   case discord
+  /// Indoor temperature read through a user-selected Apple Home shortcut.
+  case homeTemperature
+  /// One full-height terminal, with its width configured separately.
+  case terminal
   /// A web page (address in `AppSettings.webURL`).
   case web
   /// A photo, GIF or video on loop (file in `AppSettings.mediaItems`); any number may be placed.
@@ -148,8 +148,6 @@ struct AppSettings: Codable, Equatable {
   var ensureNativeResolution = true
 
   // Dashboard
-  var terminalEnabled = true
-  var terminalSide: TerminalSide = .left
   var terminalWidth = 1120.0
   var terminalFontSize = 14.0
   var terminalUseTmux = true
@@ -163,6 +161,9 @@ struct AppSettings: Codable, Equatable {
   /// Page shown by the web widget; a bare host gets https://.
   var webURL = ""
   var webZoom = 1.0
+  /// A shortcut returning a temperature, and an optional room label.
+  var homeTemperatureShortcut = ""
+  var homeTemperatureLabel = ""
   /// The user's own Discord application for the RPC link; its secret is in the keychain.
   var discordClientID = ""
   /// Show each Mac notification banner across the dashboard for a moment.
@@ -192,8 +193,6 @@ struct AppSettings: Codable, Equatable {
     dockLockEnabled = v(.dockLockEnabled, dockLockEnabled)
     evictWindows = v(.evictWindows, evictWindows)
     ensureNativeResolution = v(.ensureNativeResolution, ensureNativeResolution)
-    terminalEnabled = v(.terminalEnabled, terminalEnabled)
-    terminalSide = v(.terminalSide, terminalSide)
     terminalWidth = v(.terminalWidth, terminalWidth)
     terminalFontSize = v(.terminalFontSize, terminalFontSize)
     terminalUseTmux = v(.terminalUseTmux, terminalUseTmux)
@@ -215,6 +214,8 @@ struct AppSettings: Codable, Equatable {
     launcherItems = v(.launcherItems, launcherItems)
     webURL = v(.webURL, webURL)
     webZoom = v(.webZoom, webZoom)
+    homeTemperatureShortcut = v(.homeTemperatureShortcut, homeTemperatureShortcut)
+    homeTemperatureLabel = v(.homeTemperatureLabel, homeTemperatureLabel)
     discordClientID = v(.discordClientID, discordClientID)
     notificationsEnabled = v(.notificationsEnabled, notificationsEnabled)
     mediaItems = v(.mediaItems, mediaItems)

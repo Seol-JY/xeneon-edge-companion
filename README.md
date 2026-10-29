@@ -25,7 +25,7 @@ dashboard. It is an unofficial project and not affiliated with Corsair.
   drag, and long press for right-click. Touching the dashboard doesn't move the mouse cursor.
 - Dashboard widgets: clock, CPU per core, GPU, memory, network and disk, temperatures, power and
   Bluetooth device batteries, Claude Code and Codex usage limits, volume and output device,
-  timer (±1 minute), app launcher, system info, and an optional terminal on one side.
+  timer (±1 minute), app launcher, system info, and a full-height terminal widget.
 - Apple Music on the clock widget's second page: artwork, track, progress (tap to seek) and
   playback buttons. It comes to the front while music plays and steps back once playback stops.
 - A web page widget showing any address you set, with logins kept between launches.
@@ -111,7 +111,10 @@ display mode, applies color presets and opens Settings.
 - Discord widget: works as is. To see members, open Settings → Dashboard → Discord → How to link.
   Discord only opens voice data to an application's own testers, so each user creates an
   application on the developer portal, adds `http://localhost` to its OAuth2 redirects, pastes its
-  Client ID and Client Secret, and approves the prompt in Discord.
+  Client ID and Client Secret, and approves the prompt in Discord. Once linked, the second widget
+  page shows and changes Discord’s microphone and output devices.
+- Terminal widget: add one from the layout editor and move it between pages like other widgets. Its height fills both rows; adjust its width and font in Settings → Dashboard → Terminal. The session stays alive when switching pages.
+- Room temperature: connect a shortcut that returns an Apple Home temperature in Settings → Dashboard, then add the Room temperature widget in the layout editor. It samples every minute and stores the last 24 hours locally for its graph. Sampling pauses while the dashboard is suspended or the Mac is locked.
 - Notifications on the Edge: turn on Settings → Dashboard → Notifications. Only banners macOS
   actually shows are picked up, so Focus, apps with banners off and the "Show previews" setting
   all apply as they do on the Mac.
