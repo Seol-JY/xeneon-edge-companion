@@ -114,7 +114,6 @@ display mode, applies color presets and opens Settings.
   Client ID and Client Secret, and approves the prompt in Discord. Once linked, the second widget
   page shows and changes Discord’s microphone and output devices.
 - Terminal widget: add one from the layout editor and move it between pages like other widgets. Its height fills both rows; adjust its width and font in Settings → Dashboard → Terminal. The session stays alive when switching pages.
-- Room temperature: connect a shortcut that returns an Apple Home temperature in Settings → Dashboard, then add the Room temperature widget in the layout editor. It samples every minute and stores the last 24 hours locally for its graph. Sampling pauses while the dashboard is suspended or the Mac is locked.
 - Notifications on the Edge: turn on Settings → Dashboard → Notifications. Only banners macOS
   actually shows are picked up, so Focus, apps with banners off and the "Show previews" setting
   all apply as they do on the Mac.

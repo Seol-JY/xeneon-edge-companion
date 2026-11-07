@@ -304,7 +304,6 @@ private struct DashboardTab: View {
       UsageSection()
       WebPageSection(store: store)
       DiscordSection(store: store)
-      HomeTemperatureSection(store: store)
       Section(tr("알림", "Notifications")) {
         Toggle(tr("Mac 알림을 Edge에 띄우기", "Show Mac notifications on the Edge"), isOn: $store.settings.notificationsEnabled)
         Text(tr("알림 배너가 뜨면 이를 인식해 표시해요. Mac의 설정에 따라 실제로 Mac에 배너가 뜨는 경우에만 연동돼요.",
@@ -624,6 +623,7 @@ private struct HomeTemperatureSection: View {
 
   var body: some View {
     Section(tr("실내 온도 위젯", "Room temperature widget")) {
+      Toggle(tr("온도 자동 측정", "Automatically refresh temperature"), isOn: $store.settings.homeTemperatureAutoRefresh)
       Text(tr("Apple 홈의 온도를 읽는 단축어를 연결해요. 1분마다 측정하고 최근 24시간의 변화를 그래프로 보여줘요.",
               "Connect a shortcut that reads an Apple Home temperature. Readings are collected every minute, with a graph of the last 24 hours."))
         .font(.caption).foregroundStyle(.secondary)
@@ -642,7 +642,7 @@ private struct HomeTemperatureSection: View {
           let name = shortcut.trimmingCharacters(in: .whitespacesAndNewlines)
           store.settings.homeTemperatureShortcut = name
           store.settings.homeTemperatureLabel = label.trimmingCharacters(in: .whitespacesAndNewlines)
-          model.configure(shortcut: name, enabled: store.settings.dashboardEnabled && store.settings.pages.contains { $0.slots.contains { $0.kind == .homeTemperature } })
+          model.configure(shortcut: name, enabled: store.settings.homeTemperatureAutoRefresh && store.settings.dashboardEnabled && store.settings.pages.contains { $0.slots.contains { $0.kind == .homeTemperature } })
           model.refresh()
         }
         .disabled(shortcut.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty || model.isLoading)

@@ -72,7 +72,7 @@ import EdgeCore
 
   /// Also used by the explicit connection test before the widget is placed.
   func refresh() {
-    guard configured, !isLoading else { return }
+    guard WidgetKind.homeTemperature.isAvailable, configured, !isLoading else { return }
     isLoading = true
     error = nil
     let name = shortcut, version = generation

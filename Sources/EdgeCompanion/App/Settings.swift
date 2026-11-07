@@ -31,11 +31,14 @@ enum WidgetKind: String, Codable, CaseIterable, Identifiable {
   case spacer
   var id: String { rawValue }
 
+  /// Temporarily unavailable while shortcut execution causes system renderer load.
+  var isAvailable: Bool { self != .homeTemperature }
+
   var allowsMultiple: Bool { self == .spacer || self == .media }
 
   /// Kinds from earlier versions, folded into the current ones (nil: dropped).
   static func migrating(_ raw: String) -> WidgetKind? {
-    if let kind = WidgetKind(rawValue: raw) { return kind }
+    if let kind = WidgetKind(rawValue: raw) { return kind.isAvailable ? kind : nil }
     switch raw {
     case "disk": return .network
     case "processes": return .system
@@ -162,6 +165,7 @@ struct AppSettings: Codable, Equatable {
   var webURL = ""
   var webZoom = 1.0
   /// A shortcut returning a temperature, and an optional room label.
+  var homeTemperatureAutoRefresh = true
   var homeTemperatureShortcut = ""
   var homeTemperatureLabel = ""
   /// The user's own Discord application for the RPC link; its secret is in the keychain.
@@ -214,6 +218,7 @@ struct AppSettings: Codable, Equatable {
     launcherItems = v(.launcherItems, launcherItems)
     webURL = v(.webURL, webURL)
     webZoom = v(.webZoom, webZoom)
+    homeTemperatureAutoRefresh = v(.homeTemperatureAutoRefresh, homeTemperatureAutoRefresh)
     homeTemperatureShortcut = v(.homeTemperatureShortcut, homeTemperatureShortcut)
     homeTemperatureLabel = v(.homeTemperatureLabel, homeTemperatureLabel)
     discordClientID = v(.discordClientID, discordClientID)

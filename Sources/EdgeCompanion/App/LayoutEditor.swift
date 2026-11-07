@@ -174,7 +174,7 @@ struct LayoutEditor: View {
 
   private var availableKinds: [WidgetKind] {
     let used = Set(pages.flatMap { $0.slots.map(\.kind) })
-    return WidgetKind.allCases.filter { $0.allowsMultiple || !used.contains($0) }
+    return WidgetKind.allCases.filter { $0.isAvailable && ($0.allowsMultiple || !used.contains($0)) }
   }
 
   private func updatePage(_ change: (inout DashboardPage) -> Void) {
